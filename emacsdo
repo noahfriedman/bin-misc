@@ -1,0 +1,49 @@
+#!/bin/sh
+# emacsdo 
+# Author: Roland McGrath <roland@prep.ai.mit.edu>
+# Date: 1994-10-24
+
+# $Id$
+
+# Commentary:
+
+# I suddenly felt the need to be able to tell Emacs to perform arbitrary
+# forms from another terminal, but didn't feel like finding and compiling and
+# installing gnuserv.  Well I did find gnuserv, but didn't feel like
+# compiling it, and upon reading it noted it is done rather cheezily.
+#
+# So instead, I whipped up this script I call ~/bin/emacsdo; if you're
+# going to have cheese, might as well have full-on spray-can cheese.
+# This works with stock v19 server.el.  Bonus points for telling me what
+# the last page of the script is good for.
+
+# Code:
+
+fn=/tmp/emacsdo$$
+
+trap 'rm -f $fn' 0 1 15
+
+if [ $# -gt 0 ]; then 
+  echo "$*" > $fn
+else
+  cat > $fn
+fi
+
+cat >> $fn <<\EOF
+;; May result in somewhat random display in the selected window and echo area.
+(let ((buf (current-buffer)))
+  (server-buffer-done buf)
+  (kill-buffer buf))
+;;; Local Variables:
+;;; server-switch-hook: ((lambda () (load-file buffer-file-name)))
+;;; End:
+EOF
+
+emacsclient $fn
+status=$?
+
+rm -f $fn
+
+exit $status
+
+# No local variables.

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Front end for GNU `cp', `mv', etc. to use version control.
+# Author: Noah Friedman <friedman@prep.ai.mit.edu>
+# Created: 1994-11-14
+# Public domain
+
+# $Id$
+
+VERSION_CONTROL=${VERSION_CONTROL-numbered}
+export VERSION_CONTROL
+
+progname=`echo "$0" \
+           | sed -ne 's/[^\/]*\///g
+                      s/^b//
+                      p'`
+
+exec "$progname" -bv ${1+"$@"}
+
+# eof

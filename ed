@@ -1,0 +1,15 @@
+#! /bin/sh
+# Run GNU ed with `-G' (backward compatibility option), or traditional ed
+# with no additional options.
+
+# $Id$
+
+ed=`run-next -s 2 -p ed`
+
+if $ed --version > /dev/null 2>&1; then
+  exec $ed -G ${1+"$@"}
+else
+  exec $ed ${1+"$@"}
+fi
+
+# eof
