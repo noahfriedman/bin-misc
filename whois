@@ -1,28 +1,46 @@
-#! /bin/sh
-# $Id: whois,v 1.4 2000/02/20 07:48:27 friedman Exp $
+#!/bin/sh
+exec ${PERL-perl} -Swx $0 ${1+"$@"}
+#!perl
 
-if { jwhois --version; } > /dev/null 2>&1 ; then
-  whois="jwhois"
-else
-  whois=`run-next -p "$0"`
-fi
+# $Id: whois,v 1.5 2000/08/30 06:21:13 friedman Exp $
 
-"$whois" ${1+"$@"} \
- | perl -e '
-     $/ = undef;
-     $buf = <>;
-     @s = ("The Data in Network Solutions.*abide by this policy.\n+",
-           ".*www.nic.fr/info/whois/dbcopyright.html\n+",
-           "The ARIN Registration Services Host.*NIPRNET Information.\n+",
+my $whois = "jwhois";
+system ("jwhois --version > /dev/null 2>&1");
+if ($? != 0)
+  {
+    $whois = `run-next -p "$0"`;
+    chop $whois;
+  }
 
-           # whois.dotster.com preamble
-           "The data contained in Dotster.*limitations of warranty.\n+",
+open (F, "$whois @ARGV |");
+$/ = undef;
+my $buf = <F>;
+close (F);
 
-           # Compuserve preamble
-           "Access to CompuServe.s WHOIS.*you agree to these terms.\n+",
-           # Compuserv postamble
-           "WHOIS data is only provided.*http://domain.compuserve.com\n+",
-          );
-     foreach $r (@s) { $buf =~ s/$r//s }
-     print $buf;
-   '
+my @s
+  = ("The Data in Network Solutions.*abide by this policy.\n+",
+     ".*www.nic.fr/info/whois/dbcopyright.html\n+",
+     "The ARIN Registration Services Host.*NIPRNET Information.\n+",
+
+     # whois.dotster.com preamble
+     "The data contained in Dotster.*limitations of warranty.\n+",
+     # whois.dotster.com postamble
+     "Register a domain name at www.dotster.com\n+",
+
+     # whois.register.com preamble
+     "The data in Register.com.s WHOIS.*abide by these terms.\n+",
+     # whois.register.com postamble
+     "Register your domain name at http://www.register.com\n+",
+
+     # Compuserve preamble
+     "Access to CompuServe.s WHOIS.*you agree to these terms.\n+",
+     # Compuserv postamble
+     "WHOIS data is only provided.*http://domain.compuserve.com\n+",
+    );
+
+my $r;
+foreach $r (@s)
+  {
+    $buf =~ s/$r//s;
+  }
+print $buf;
