@@ -1,7 +1,8 @@
 #! /bin/sh
-# $Id$
+# $Id: cvs-gila,v 1.1 1998/04/03 00:31:01 friedman Exp $
 
-CVSROOT=:ext:webmonkey@gila.mozilla.org:/e/jail/cvsroot
+#CVSROOT=:ext:webmonkey@gila.mozilla.org:/e/jail/cvsroot
+CVSROOT=:pserver:friedman@gila.mozilla.org:/cvsroot
 export CVSROOT
 
 CVS_RSH=ssh
