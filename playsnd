@@ -1,0 +1,9 @@
+#!/bin/sh
+
+for f in ${1+"$@"}; do
+  echo "$f"
+  case "$f" in
+    *.[Mm][Pp]3 ) mpg123 "$f" ;;
+    * )           play "$f" ;;
+  esac
+done
