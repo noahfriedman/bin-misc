@@ -1,9 +1,21 @@
 #!/bin/sh
-# $Id: p4,v 1.4 2000/05/08 19:33:07 friedman Exp $
+# $Id: p4,v 1.5 2000/05/26 05:10:16 friedman Exp $
 
 case ":${P4CONFIG+set}:${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
   :set:* | ::set:set:set: ) : ;;
-  * ) eval `p4-init-env -sh` ;;
+  * )
+    eval `p4-init-env -sh`
+
+    # Allow .p4config file in the current or any parent directory to
+    # override default parameters
+    dir=`/bin/pwd`
+    while [ "$dir" != "NULL" ]; do
+      if [ -f "$dir/.p4config" ]; then
+        source "$dir/.p4config"
+        break
+      fi
+      dir=`echo "$dir" | sed -e 's/^$/NULL/' -e 's/\/[^\/]*$//'`
+    done
 esac
 
 # Make sure that symlinks are resolved; if this variable is exported, p4
