@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: yemacs,v 1.5 2004/12/06 19:57:55 friedman Exp $
+# $Id: yemacs,v 1.6 2004/12/07 03:31:51 friedman Exp $
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
@@ -30,9 +30,9 @@ for dir in $builddirs; do
     YEMACS_EXECDIR=$ydir
     PATH=$ydir:$PATH
     export YEMACS_EXECDIR PATH
-  fi
 
-  exec -a "$progname" $ydir/emacs "$@"
+    exec -a "$progname" $ydir/emacs "$@"
+  fi
 done
 
 exec emacs "$@"
