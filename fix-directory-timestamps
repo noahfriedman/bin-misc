@@ -1,0 +1,14 @@
+#!/bin/sh
+# $Id$
+
+find "$@" -type d -print \
+ | sort -r \
+ | while read d; do
+     nfile=`ls -1At "$d" | head -1`
+     case "$nfile" in
+       '' ) : ;;
+       * ) touch -r "$d/$nfile" "$d" ;;
+     esac
+   done
+
+# eof
