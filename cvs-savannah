@@ -1,0 +1,12 @@
+#! /bin/sh
+# $Id$
+
+prj=$1
+shift
+
+CVSROOT=:ext:anoncvs@savannah.gnu.org:/cvsroot/$prj
+CVS_RSH=ssh-rexec
+
+export CVSROOT CVS_RSH
+
+exec ${CVS-cvs} ${1+"$@"}
