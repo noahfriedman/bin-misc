@@ -1,0 +1,14 @@
+#!/bin/bash2
+
+# Prevent emacs bugs from consing all memory and thrashing the system until
+# linux decides to start nuking other processes for more space.
+ulimit -Sd 65535
+
+ydir=`cd /fs/u3/sys/emacs-21-build/current/src && /bin/pwd`
+
+test -e $ydir/-emacs || ln -s emacs $ydir/-emacs
+
+PATH=$ydir:$PATH
+export PATH
+
+exec -l emacs ${1+"$@"}
