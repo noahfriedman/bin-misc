@@ -1,15 +1,19 @@
-#! /bin/sh
-# $Id: p4-init-env,v 1.9 2001/09/08 19:58:37 friedman Exp $
+#!/bin/sh
+# $Id: p4-init-env,v 1.10 2001/10/31 08:38:18 friedman Exp $
 
 # Commentary:
 
 # Output proper p4 environment variable settings based on subnet.
 # These should be eval'ed by the calling shell.
 
-# Based 1999-10-15 on Ryan Hamilton's `p4set' tcsh script.
-
-# Usage: eval `p4-init-env [user]`
-#        eval `p4-init-env [-shell]`
+# Usage: eval `p4-init-env {user} {-shell} {--override|--no-override}`
+#
+# user           Set P4USER to this user.
+# -shell         Emit shell's syntax for setting variables (e.g. "-tcsh")
+# --override     indicates that P4* variables will be redefined even if
+#                they are already present in the environment.
+# --no-override  Any P4* variable already inherited from the environment
+#                will not be overridden.
 
 # Code:
 
@@ -22,33 +26,30 @@ hostname=${HOSTNAME-`hostname`}
 hostname=`echo "$hostname" | sed -e 's/\..*//'`
 shell=$SHELL
 
-# Defaults which can be overridden below
-case "${P4USER+set}" in
-  set ) : ;;
-  * )
-    case "$1" in
-      '' ) P4USER=$user ;;
-      -* )
-        P4USER=$user
-        shell=$1
-        shift
-       ;;
-      *  )
-        P4USER=$1
-        shift
-       ;;
-    esac
-   ;;
+opt_user=
+overridep=f
+while : ; do
+  case $# in 0) break ;; esac
+  case "$1" in
+    --override    ) overridep=t ; shift ;;
+    --no-override ) overridep=f ; shift ;;
+    -*            ) shell=$1    ; shift ;;
+    *             ) opt_user=$1 ; shift ;;
+  esac
+done
+
+# Set P4USER only if not already set, or override was specified.
+case "$overridep:${P4USER+set}:$opt_user" in
+  t:*:?* | f::?* )   P4USER=$opt_user ;;
+  t:*:   | f:: )     P4USER=$user     ;;
 esac
 
-case "${P4CLIENT+set}" in
-  set ) : ;;
-  * ) P4CLIENT=$uid.$hostname ;;
+case "$overridep:${P4CLIENT+set}" in
+  t:* | f: ) P4CLIENT=$uid.$hostname ;;
 esac
 
-case "${P4PORT+set}" in
-  set ) : ;;
-  * )
+case "$overridep:${P4PORT+set}" in
+  t:* | f: )
     # Determine subnet based on default route gateway
     subnet=`netstat -rn \
              | sed -n -e '/^default/b p' \
@@ -76,7 +77,7 @@ case "${P4PORT+set}" in
       205.188.183.254 )     P4PORT=topaz     ;; # va5 search nodes
 
       62.172.199.1 )        P4PORT=beryl     ;; # uk1
-      213.216.143.1 )       P4PORT=ivory     ;; # uk2
+      213.216.143.1 )       P4PORT=ibex      ;; # uk2
 
       216.35.11[678].1 )    P4PORT=feldspar  ;; # gigadoc
       209.185.122.1 )       P4PORT=amber     ;; # mini cluster
@@ -115,28 +116,40 @@ case "$shell" in
 esac
 
 case "$shell" in
-  csh | tcsh | zsh )
-    echo "setenv P4PORT   $P4PORT;"
+  csh | tcsh )
     echo "setenv P4USER   $P4USER;"
+    echo "setenv P4PORT   $P4PORT;"
     echo "setenv P4CLIENT $P4CLIENT;"
    ;;
-  emacs | scsh )
-    progn="progn"
-    case "$shell" in scsh ) progn="begin" ;; esac
-    echo "($progn"
-    echo "  (setenv \"P4PORT\"   \"$P4PORT\")"
-    echo "  (setenv \"P4USER\"   \"$P4USER\")"
-    echo "  (setenv \"P4CLIENT\" \"$P4CLIENT\"))"
+  perl )
+    echo '$ENV{P4USER}="'"$P4USER"'";'
+    echo '$ENV{P4PORT}="'"$P4PORT"'";'
+    echo '$ENV{P4CLIENT}="'"$P4CLIENT"'";'
    ;;
-  * )
-    echo "P4PORT=$P4PORT;"
+  gdb )
+    echo "set environment P4USER   $P4USER"
+    echo "set environment P4PORT   $P4PORT"
+    echo "set environment P4CLIENT $P4CLIENT"
+   ;;
+  emacs | rep | sawfish | clisp | scsh | guile )
+    progn="progn"
+    setenv="setenv"
+    case "$shell" in
+      scsh | guile ) progn="begin"           ;;
+      clisp )        setenv="system::setenv" ;;
+    esac
+    echo "($progn"
+    echo "  ($setenv \"P4USER\"   \"$P4USER\")"
+    echo "  ($setenv \"P4PORT\"   \"$P4PORT\")"
+    echo "  ($setenv \"P4CLIENT\" \"$P4CLIENT\"))"
+   ;;
+  * ) # sh, ksh, bash, zsh, es, rc; others?
     echo "P4USER=$P4USER;"
+    echo "P4PORT=$P4PORT;"
     echo "P4CLIENT=$P4CLIENT;"
     case "$shell" in
       es | rc ) : ;;
-      * )
-        echo "export P4PORT P4USER P4CLIENT;"
-       ;;
+      * ) echo "export P4USER P4PORT P4CLIENT;" ;;
     esac
   ;;
 esac
