@@ -1,0 +1,7 @@
+#! /bin/sh
+# $Id$
+
+CVSROOT=:pserver:friedman@melange.gnu.org:/gd/gnu/cvsroot
+export CVSROOT
+
+exec ${CVS-cvs} ${1+"$@"}
