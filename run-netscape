@@ -1,4 +1,36 @@
-#!/bin/sh
-HOME=/home/$USER/etc/www/netscape
+#!/bin/sh -x
+# $Id$
+
+ver="$1"; shift
+nam="$1"; shift
+
+case "$ver" in
+  '' | any ) : ;;
+  *.* )
+    MOZVERSION="$ver"
+    export MOZVERSION
+   ;;
+  * )
+    MOZMAJORVERSION="$ver"
+    export MOZMAJORVERSION
+   ;;
+esac
+
+case "$nam" in
+  '' | normal ) : ;;
+  * )
+    MOZNAME="$nam"
+    export MOZNAME
+   ;;
+esac
+
+HOME=$HOME/etc/www/netscape
 export HOME
-exec netscape ${1+"$@"}
+
+case "$ver" in
+  4* ) HOME="$HOME/dogbert" ;;
+esac
+
+exec netscape-fe ${1+"$@"}
+
+# eof
