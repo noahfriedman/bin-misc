@@ -1,0 +1,147 @@
+#!/bin/sh
+
+# pilot-network-hotsync --- enable network tunnel for pda
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2003-04-29
+# Public domain
+
+# $Id$
+
+# Commentary:
+
+# This script allows me to synchronize a palm device connected locally to a
+# linux box via usb, to a network hotsync manager.  I use this primarily to
+# download MeetingMangler entries to my palm datebook, which requires a
+# win32-based conduit that I cannot run locally on my linux system.
+
+# Because this script "knows" about the usbdevfs virtual fs layout and
+# format, and performs iptables rule management, this script probably won't
+# run on anything but a recent-ish (c.2003) linux-based system.  I use
+# Redhat 9.
+
+# To make this work, several pieces of initial configuration are needed:
+#
+#    1. On the hotsync server:
+#
+#       a. Set up the hotsync user for network connections.
+#          Right-click on hotsync tray icon, then look at Setup->Network.
+#
+#       b. Enable listening for network connections.
+#          Right-click on hotsync tray icon, then make sure "Network"
+#          (indicated just above "Setup") is enabled.
+#
+#    2. On palm:
+#
+#       a. Go to Prefs application.
+#
+#          i.  Select "Connection" tab.
+#              Create a new connection called "LAN" with the following
+#              settings:
+#
+#                          Connect to: Local Network
+#                                 Via: Cradle/Cable
+#
+#                      Details->Speed: 115,200 bps
+#                   Details->Flow Ctl: Automatic
+#
+#          ii. Select "Network" tab.
+#              Create a new service called "PPP", no username or password.
+#              Set Connection to "LAN".
+#
+#       b. Go to HotSync application.
+#
+#          i.   Go to Menu->Modem Sync Prefs and choose "Network".
+#
+#          ii.  Go to Menu->LANSync Prefs and choose "LANSync".
+#
+#          iii. Go to Menu->Primary PC Setup and enter the hostname and IP
+#               address of your network hotsync server.
+#
+#          iv.  In main interface, select "Modem" instead of "Local" (buttons
+#               located just above main hotsync button).
+#
+#          v.   Set dialer to "PPP" (button located just below main hotsync
+#               button).
+#
+# Now you are ready to perform a hotsync.  Plug the PDA into a USB port,
+# press the hotsync button, then in a terminal window, run this script.
+
+# Code:
+
+# usb vendor:prodid for Sony Clie; we use this to wait for hotplug to do
+# its thing when the hotsync button is pressed.
+USB_VENDOR=054c
+USB_PRODID=009a
+USB_DEV_DEFAULT=/dev/ttyUSB0
+
+# When the usb device is unregistered, programs do not get any eof
+# condition on the device, so even though pppd will shut down the link, it
+# will fail to exit.  So we put a process (this script, called recursively
+# with an env var that modifies its actions) between pppd and the usb
+# device that will terminate things when the connection closes.
+funnel ()
+{
+  cat "$1" &                # handle reads
+  pid=$!
+  cat > "$1" 2>/dev/null     # handle writes; exits when pppd closes link
+  kill $pid                  # must kill reader; won't exit on its own
+}
+
+startup_masq ()
+{
+  saved_ip_forward=`cat /proc/sys/net/ipv4/ip_forward`
+  echo 1 > /proc/sys/net/ipv4/ip_forward
+  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+}
+
+shutdown_masq ()
+{
+  echo $saved_ip_forward > /proc/sys/net/ipv4/ip_forward
+  iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+}
+
+connect ()
+{
+  PNETSYNCDEV="$1"
+  export PNETSYNCDEV
+
+  startup_masq
+  pppd pty $0 nodetach local noauth mtu 255 10.0.0.1:10.0.0.2
+  shutdown_masq
+}
+
+wait_for_usb_dev ()
+{
+  vend=$1 prod=$2
+  i=0
+
+  while [ $i -lt 15 ]; do
+    if grep -q "^P:  Vendor=$vend ProdID=$prod" /proc/bus/usb/devices; then
+      return 0
+    fi
+    i=$[ i + 1 ]
+    sleep 1
+    if [ $i -eq 1 ]; then
+      echo "Waiting for usb device connection..." 1>&2
+    fi
+  done
+  echo "Timeout waiting for usb device to connect" 1>&2
+  exit 1
+}
+
+main ()
+{
+  case $PNETSYNCDEV in
+    '' )
+      wait_for_usb_dev "$USB_VENDOR" "$USB_PRODID"
+      connect "${1-$USB_DEV_DEFAULT}"
+     ;;
+    * ) funnel "$PNETSYNCDEV" ;;
+  esac
+}
+
+# we must be root to do anything useful
+case `id -u` in
+  0 ) main "$@"    ;;
+  * ) sudo $0 "$@" ;;
+esac
