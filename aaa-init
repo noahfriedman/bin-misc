@@ -4,9 +4,15 @@
 # Created: 1993-06-17
 # Public domain.
 
-# $Id: aaa-init,v 1.2 1994/06/24 05:22:44 friedman Exp friedman $
+# $Id: aaa-init,v 1.3 1994/07/12 20:42:04 friedman Exp friedman $
 
 # Commentary:
+
+# Call with arg "boston" to initialize power-on string to know about MIT-AI
+# and GNU  modem phone numbers.
+# Call with arg "austin" to initialize power-on string to know about UT and
+# CLI modem phone numbers.
+
 # Code:
 
 # This defines a null function that allows one to put form feeds (^L) in
@@ -44,21 +50,34 @@ SPF6-prefix  = 'Y';   SPF12-prefix = '_'
 
 # Desired strings. 
 
-# number for graham-chex, a Livingston Portmaster terminal server with 16
-# dialup ZyXEL 14.4KB modems
-SPF9  = 'ATDT2521821'^$qCRLF
+if { ~ $1 ai boston cambridge mit gnu } \
+     {
+       # number for graham-chex, a Livingston Portmaster terminal server
+       # with 16 dialup ZyXEL 14.4KB modems
+       SPF9  = 'ATDT2521821'^$qCRLF
 
-# rice-chex; defunct
-# SPF10 = 'ATDT2588265'^$qCRLF
+       # rice-chex; defunct
+       # SPF10 = 'ATDT2588265'^$qCRLF
 
-# terminus.lcs.mit.edu, a cisco terminal server.
-# This line is for the high-speed (>= 9600bps) modems.  The slower modems
-# are 258-7111.
-SPF10 = 'ATDT2586222'^$qCRLF
+       # terminus.lcs.mit.edu, a cisco terminal server.
+       # This line is for the high-speed (>= 9600bps) modems.  The slower
+       # modems are 258-7111.
+       SPF10 = 'ATDT2586222'^$qCRLF
 
-# albert's modem, a crummy microcom 9600bps v.32/mnp5 modem.
-SPF11 = 'ATDT2587022'^$qCRLF
+       # albert's modem, a crummy Incomm 9600bps v.32/mnp5 modem.
+       SPF11 = 'ATDT2587022'^$qCRLF
+     } \
+   { ~ $1 austin cli ut utexas || ~ $1 () } \
+     {
+       # telesys.ots.utexas.edu, the general UT dialup server
+       SPF10 = 'ATDT4759996'^$qCRLF
 
+       # houston.cli.com, a cisco terminal server
+       # with 16 dialup Microcom 14.4KB modems
+       SPF11 = 'ATDT4773054'^$qCRLF
+     }
+
+# Useful init string for Incomm 9600bps modem.
 SPF12 = 'ATE1L3M1Q0V1X4S0=0S10=50\D0\J1\K3\N2\Q3'^$qCRLF
 
 
@@ -72,7 +91,7 @@ power-on-suffix = 'T{HANKS FOR TURNING ME ON}!~M~J'^$e^'\'
 let (pstring = '')
   {
     for (s = SPF9 SPF10 SPF11 SPF12)
-      pstring = $pstring^$qDCSstart^$($s^-prefix)^$$s^$qDCSend
+      pstring = $pstring^$qDCSstart^$($s^-prefix)^$^($s)^$qDCSend
     pstring = $power-on-prefix^$pstring^$display-parameters^$power-on-suffix
 
     echo -n $pstring
