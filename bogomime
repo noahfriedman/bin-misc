@@ -1,16 +1,16 @@
-#!/usr/local/bin/perl -w
+#! /usr/local/bin/perl -w
 #
 # bogomime - filter to convert Sun mailtool messages with attachments
 #            to MIME-encoded messages
 #
 # Copyright (C) 1997 Bryan O'Sullivan
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
+# This is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
-# This program is distributed in the hope that it will be useful, but
+# This software is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
@@ -18,58 +18,21 @@
 # To obtain a copy of the GNU General Public License, write to the
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
 # MA 02111-1307, USA.
-#
-# COMMENTARY:
-#
-# This program operates as a filter; it takes a message on stdin,
-# munges it, and spits it out again on stdout.
-#
-# You can call this program as a filter from within procmail by
-# including a section such as the following in your ~/.procmailrc:
-#
-#   ## Convert messages sent by Sun's mailtool to MIME.
-#   :0 fhbw
-#   * ^Content-Type: X-Sun-attachment
-#   | bogomime
-#
-# As things currently stand, this program has a number of very useful
-# features:
-#
-# - Recursively handles mailtool message digests, such that messages
-#   are maintained in sane ways
-#
-# - Converts uuencoded bodyparts to use base64 encoding, so that users
-#   don't have to jump through hoops to read bodyparts
-#
-# - Goes to some lengths not to screw up when tweaking encodings, so
-#   users are unlikely to lose data, even in the event of unforeseen
-#   problems
-#
-# Note that this program is not complete or necessarily correct; it
-# makes certain assumptions about the way mailtool mail is encoded
-# that just happen to almost always be correct.  However, I have not
-# run into any problems thus far.
-#
-# If you make tweaks to the code that you think may be generally
-# applicable, please send me context diffs; if I find your changes
-# useful, I may incorporate them.  Feedback is always appreciated.
-#
-# Bryan O'Sullivan <bos@serpentine.com>
 
 require 5.000;
 
 ## Change these if you need to.
 
 # The location of a standard uudecode utility.
-$uudecode = "/usr/bin/uudecode";
+$uudecode = "uudecode";
 
 # The location of some program that will take input on stdin and spit
 # it out base64-encoded on stdout.
-$base64_encode = "/opt/local/bin/base64-encode";
+$base64_encode = "base64-encode";
 
 # Mappings from Sun attachment types to MIME types.  Anything not
 # listed here defaults to application/octet-stream.
-%mappings =
+%type_mappings =
     qw(
        ae-file			text/plain
        audio-file		audio/basic
@@ -88,9 +51,17 @@ $base64_encode = "/opt/local/bin/base64-encode";
        text			text/plain
        );
 
+# Mappings from Sun attachment charsets to MIME charsets.  Anything
+# not listed here defaults to itself.
+%charset_mappings =
+    qw(
+       ascii		us-ascii
+       x-iso-8859-1	iso-8859-1
+       );
+
 ## No user-serviceable parts beyond this point.
 
-# Keep "perl -w" happy.
+$version = "0.2";
 
 $bodycount = 0;
 $time = time();
@@ -114,7 +85,7 @@ exit(0);
 sub process_message {
     my ($complete_header, $header_body, $line, $sun_attachment, $header, $content_length,
 	@headers, @body, @return, $prev_header, $prev_header_body, $content_encoding,
-	$content_type, $body);
+	$content_type, $content_name, $body);
     my ($text) = @_;
 
     $complete_header = "";
@@ -168,23 +139,25 @@ sub process_message {
 	# true content length of this message.
 
 	push @headers, <<END_MIME_HEADER;
-X-Mime-Munger: bogomime 0.1 - <bos\@serpentine.com>
+X-Mime-Munger: BogoMIME $version - <bos\@serpentine.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
 	boundary="$boundary"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 END_MIME_HEADER
 
         $complete_header = "";
 
 	my ($in_bodypart_headers, @bodypart);
 
-	# This must default to empty, in order for handle_bodypart to
+	# These must default to empty, in order for handle_bodypart to
 	# work correctly for the toplevel message.
 
 	$content_type = "";
+	$content_name = "";
+	$content_charset = "iso-8859-1";
 
-	$content_encoding = "7bit";
+	$content_encoding = "8bit";
 
 	# Processing the body of the message is a pain.  We have to
 	# watch out for bodypart headers, and process bodyparts with
@@ -198,17 +171,21 @@ END_MIME_HEADER
 			$header_body =~ s/[\n\s]+/ /g;
 
 			if ($header eq "x-sun-data-type") {
-			    if (defined $mappings{$header_body}) {
-				$content_type = $mappings{$header_body};
-			    } else {
-				$content_type = "application/octet-stream";
-			    }
+			    $content_type = (defined $type_mappings{$header_body}
+					     ? $type_mappings{$header_body}
+					     : "application/octet-stream");
 			} elsif ($header eq "x-sun-encoding-info") {
 			    if ($header_body =~ /uuencode/) {
 				$content_encoding = "uuencode";
 			    } else {
 				$content_encoding = $header_body;
 			    }
+			} elsif ($header eq "x-sun-data-name") {
+			    $content_name = $header_body;
+			} elsif ($header eq "x-sun-charset") {
+			    $content_charset = (defined $charset_mappings{$header_body}
+						? $charset_mappings{$header_body}
+						: $header_body);
 			}
 			push @body, $complete_header;
 		    }
@@ -230,15 +207,21 @@ END_MIME_HEADER
 		# about to enter the header of a body part
 
 		$body = &handle_bodypart($content_type, $content_encoding,
+					 $content_name, $content_charset,
 					 \@bodypart);
 
 		push @body, @$body, "\n--$boundary\n";
+
+		$content_encoding = "8bit";
+		$content_charset = "iso-8859-1";
+		$content_name = "";
 		$in_bodypart_headers = 1;
 	    } else {
 		push @bodypart, $line;
 	    }
 	}
-	$body = &handle_bodypart($content_type, $content_encoding, \@bodypart);
+	$body = &handle_bodypart($content_type, $content_encoding, $content_name,
+				 $content_charset, \@bodypart);
 	push @body, @$body, "\n--$boundary--\n";
 
 	$body = join('', @body);
@@ -246,6 +229,9 @@ END_MIME_HEADER
 
 	push @return, @headers, <<END_LAST_MIME_HEADER;
 Content-Length: $length
+
+This is a MIME-encoded message.  It used to be in Sun's proprietary
+mailtool encoding, but has since recovered.  Praise be unto BogoMIME.
 
 END_LAST_MIME_HEADER
 	push @return, @body;
@@ -287,6 +273,8 @@ sub in {
 sub handle_bodypart {
     my ($content_type) = shift;
     my ($content_encoding) = shift;
+    my ($content_name) = shift;
+    my ($content_charset) = shift;
     my ($body) = shift;
     my (@return);
 
@@ -301,7 +289,8 @@ sub handle_bodypart {
 
     if ($content_encoding eq "uuencode") {
 	if (open(UUDECODE, "| $uudecode")) {
-	    my ($bogofile) = "/tmp/bogomime.$$.uudecode";
+	    $bogon++;
+	    my ($bogofile) = "/tmp/bogomime.$$.$bogon.uudecode";
 
 	    shift @$body;
 
@@ -339,13 +328,20 @@ sub handle_bodypart {
 	}
     }
 
+    if ($content_name ne "") {
+	my ($disp) = ($content_type eq "application/octet-stream"
+			     ? "attachment"
+			     : "inline");
+	push @return, "Content-Disposition: $disp;\n\tfilename=\"$content_name\"\n";
+    }
+
     if ($content_type eq "multipart/digest") {
 	my ($boundary) = &make_boundary;
 	my ($foo) = join('', @$body);
 	push @return, <<END_DIGEST_CRUFT;
-Content-Type: $content_type;
+Content-Type: $content_type; charset=$content_charset
 	boundary="$boundary"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
 This is a forwarded message, BogoMIME encapsulation.
 
@@ -356,8 +352,11 @@ $foo
 --$boundary--
 END_DIGEST_CRUFT
     } else {
+	if ($content_encoding eq "base64") {
+	    $content_charset="us-ascii";
+	}
 	push @return, <<END_BODYPART_HEADER;
-Content-Type: $content_type
+Content-Type: $content_type; charset=$content_charset
 Content-Transfer-Encoding: $content_encoding
 
 END_BODYPART_HEADER
