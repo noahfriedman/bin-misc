@@ -2,7 +2,7 @@
 exec ${PERL-perl} -Swx $0 ${1+"$@"}
 #!perl
 
-# $Id: whois,v 1.5 2000/08/30 06:21:13 friedman Exp $
+# $Id: whois,v 1.6 2000/09/03 23:32:13 friedman Exp $
 
 my $whois = "jwhois";
 system ("jwhois --version > /dev/null 2>&1");
@@ -36,6 +36,9 @@ my @s
      "Access to CompuServe.s WHOIS.*you agree to these terms.\n+",
      # Compuserv postamble
      "WHOIS data is only provided.*http://domain.compuserve.com\n+",
+
+     # whois.gandi.net preamble
+     "% GANDI Registrar whois database for.*%[^\n]*\n+",
     );
 
 my $r;
