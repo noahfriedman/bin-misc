@@ -4,10 +4,14 @@
 # Created: 1993-06-17
 # Public domain.
 
-# $Id$
+# $Id: aaa-init,v 1.2 1994/06/24 05:22:44 friedman Exp friedman $
 
 # Commentary:
 # Code:
+
+# This defines a null function that allows one to put form feeds (^L) in
+# scripts without causing an undefined command to be executed.
+fn-\f = {}
 
 # literal escape character. 
 e = \033
@@ -37,12 +41,27 @@ SPF4-prefix  = 'W';   SPF10-prefix = ']'
 SPF5-prefix  = 'X';   SPF11-prefix = '^'
 SPF6-prefix  = 'Y';   SPF12-prefix = '_'
 
+
 # Desired strings. 
-SPF9  = 'ATDT2521821'^$qCRLF
-SPF10 = 'ATDT2588265'^$qCRLF
-SPF11 = 'ATDT2587022'^$qCRLF
-SPF12 = 'ATE1 L1 M1 Q0 V1 X4 S0=0 S10=50 \D0 \J1 \K3 \N2 \Q3'^$qCRLF
 
+# number for graham-chex, a Livingston Portmaster terminal server with 16
+# dialup ZyXEL 14.4KB modems
+SPF9  = 'ATDT2521821'^$qCRLF
+
+# rice-chex; defunct
+# SPF10 = 'ATDT2588265'^$qCRLF
+
+# terminus.lcs.mit.edu, a cisco terminal server.
+# This line is for the high-speed (>= 9600bps) modems.  The slower modems
+# are 258-7111.
+SPF10 = 'ATDT2586222'^$qCRLF
+
+# albert's modem, a crummy microcom 9600bps v.32/mnp5 modem.
+SPF11 = 'ATDT2587022'^$qCRLF
+
+SPF12 = 'ATE1L3M1Q0V1X4S0=0S10=50\D0\J1\K3\N2\Q3'^$qCRLF
+
+
 # This assumes you want 60 lines of display initially.
 # This is quoted for power-on string.
 display-parameters = '~[[60;0;0;60;{P}'
