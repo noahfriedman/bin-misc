@@ -1,0 +1,7 @@
+#! /bin/sh
+# $Id$
+
+CVSROOT=:pserver:friedman%splode.com@cvs.mozilla.org:/cvsroot
+export CVSROOT
+
+exec ${CVS-cvs} ${1+"$@"}

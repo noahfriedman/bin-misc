@@ -1,0 +1,10 @@
+#! /bin/sh
+# $Id$
+
+CVSROOT=:ext:baalperazim-rcn.frob.com:/local/repository
+export CVSROOT
+
+CVS_RSH=ssh
+export CVS_RSH
+
+exec ${CVS-cvs} ${1+"$@"}

@@ -1,7 +1,8 @@
 #! /bin/sh
-# $Id$
+# $Id: cvs-mozmirror,v 1.1 1999/07/13 08:48:04 friedman Exp $
 
-CVSROOT=:pserver:friedman%splode.com@cvs-mirror.mozilla.org:/cvsroot
+#CVSROOT=:pserver:friedman%splode.com@cvs-mirror.mozilla.org:/cvsroot
+CVSROOT=:pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot
 export CVSROOT
 
 exec ${CVS-cvs} ${1+"$@"}
