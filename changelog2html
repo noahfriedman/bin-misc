@@ -1,0 +1,212 @@
+#! /usr/local/bin/perl
+
+# This script runs either standalone or as a CGI program, and converts
+# ChangeLogs as created by GNU Emacs into HTML representations for
+# viewing on the Web.
+
+# Caveat: this has been tested across a range of "reasonable"
+# ChangeLog files, but may not produce beautiful output under all
+# circumstances.  Your mileage may vary.
+
+# Use the "--anchor" flag to create links to files.  This will not
+# work correctly if your source tree lives outside your Web hierarchy,
+# or if you list multiple file names before the ":" in the log entry.
+# If you use "--anchor", you can use "--root" to give a Web-visible
+# path to the source tree.
+
+# Bryan O'Sullivan  <bos@Eng.Sun.COM>  10.95
+
+require 5.000;
+
+# See whether we are a CGI script or being run standalone.
+
+if (defined $ENV{"REQUEST_METHOD"}) {
+    $using_cgi = 1;
+    if ($ENV{"REQUEST_METHOD"} eq "POST")
+    {
+	$length = $ENV{"CONTENT_LENGTH"}
+            or die "No content length given!";
+
+	read(STDIN, $url_query, $length)
+	    or die "No data given!";
+    } else {
+	$url_query = $ENV{"QUERY_STRING"};
+    }
+
+    my (%query) = &decode($url_query);
+    $opt_root = $query{"root"};
+    @files = ($query{"file"});
+    $opt_anchor = 1;
+} else {
+    use Getopt::Long;
+
+    &usage unless GetOptions("anchor", "filter", "root=s", "help");
+    &usage if ($opt_help);
+
+    @files = @ARGV;
+}
+
+# Some variables which deal with munging plain text into HTML.
+
+%escs = qw {
+    &	amp
+    <	lt
+    >   gt
+    "   quot
+};
+
+$escapes = join("", keys %escs);
+
+$opt_root =~ s@/+$@@g;	# remove trailing slashes
+
+# We use a state machine to keep track of what closing tags we should
+# be inserting.
+
+foreach $logfile (@files) {
+    open(IN, "< $logfile")
+	or die "$logfile: $!";
+
+    $first_header = 1;
+
+    foreach $line (<IN>) {
+	if ($line =~ /^(\w+)\s+(\w+)\s+(\d+)\s+(?# day, month, day of month
+		      )([\d:]+)\s+(\d+)\s+(?# time, year
+		      )([^(<]+)[(<]([^>)]+)[>)](?# name, email address
+		      )$/) {
+	    ($day, $month, $date, $time, $year, $name, $email) =
+		&quote($1, $2, $3, $4, $5, $6, $7);
+	    $name =~ s/\s*$//g;
+	    $name =~ s/\s/&nbsp;/g;
+	    $first_entry = 1;
+	    @outie = ("<TR><TR><TD COLSPAN=3><HR></TD></TR>\n",
+		      "<TD ALIGN=LEFT><B>$day $month $date $year, $time</B></TD>",
+		      "<TD></TD><TD ALIGN=RIGHT><A HREF=\"mailto:$email\">$name</A>",
+		      "</TD></TR>\n",);
+	    if ($first_header) {
+		$first_header = 0;
+		push @out, @outie;
+	    } else {
+		push @out, ("</TD></TR>", @outie);
+	    }
+	} elsif ($line =~ /^\s+(\*\s*)?([^:]+):\s*([^\n]+)$/) {
+	    ($file_place, $text) = ($2, $3);
+	    if ($file_place =~ /^(\S*)\s*\(([^\)]+)\)$/) {
+		$file = $1;
+		$place = $2;
+	    } else {
+		$file = $file_place;
+		$place = "";
+	    }
+	    if ($opt_anchor) {
+		$file = "<A HREF=\"$root/$file\">$file</A>";
+	    }
+	    ($text) = &quote(ucfirst $text);
+	    @outie = ("<TR><TD ALIGN=RIGHT>$file</TD><TD ALIGN=CENTER>$place</TD>",
+		      "<TD ALIGN=LEFT>$text\n");
+	    if ($first_entry) {
+		$first_entry = 0;
+		push @out, @outie;
+	    } else {
+		push @out, ("</TD></TR>", @outie);
+	    }
+	} elsif ($line =~ /^\s+\*\s*([^\n]+)$/) {
+	    ($text) = &quote(ucfirst $1);
+	    @outie = ("<TR><TD COLSPAN=2></TD><TD ALIGN=LEFT>$textd#\n");
+	    if ($first_entry) {
+		$first_entry = 0;
+		push @out, @outie;
+	    } else {
+		push @out, ("</TD></TR>", @outie);
+	    }
+	} elsif ($line ne "\n") {
+	    $line =~ s/^\s*(.*)\s*$/$1/g;
+	    ($line) = &quote($line);
+	    push @out, "$line\n";
+	}
+    }
+
+    if (!$first_header) {
+	push @out, "</TR>\n";
+    }
+
+    if (!$using_cgi) {
+	$logfile_html = ($opt_filter || ($logfile eq "-"))
+	    ? "-" : "$logfile.html";
+	open(OUT, "> $logfile_html")
+	    or die "$logfile_html: $!";
+    }
+
+    if ($#out >= 0) {
+	@out = ("<CENTER>\n<TABLE>\n",
+		"<!-- Brought to you by cl2html.cgi on ", scalar localtime, ". \n",
+		"     Bryan O'Sullivan - bos\@Eng.Sun.COM - October 1995. -->\n",
+		"<TR><TH ALIGN=RIGHT>File name</TH><TH>Place</TH>",
+		"<TH ALIGN=LEFT>Change made</TH></TR>\n",
+		@out,
+		"</TABLE>\n</CENTER>\n");
+	$out = join("", @out);
+    } else {
+	$out = "Empty ChangeLog.";
+    }
+
+    close(IN);
+
+    if ($using_cgi) {
+	print ("Content-Type: text/html\n",
+	       "Content-Length: ", length $out, "\n",
+	       "\n",
+	       $out);
+    } else {
+	print OUT $out;
+	close(OUT);
+    }
+}
+
+exit(0);
+
+
+# Print out a usage message and die.
+
+sub usage {
+    print STDERR ("usage: cl2html [--help] [--anchor] [--filter] ",
+		  "[--root=www-root-dir] logfile ...\n");
+    exit(1);
+}
+
+
+# Split up and de-munge a URL-encoded string, returning the resulting
+# (key, value) pairs in an associative array.
+
+sub decode {
+    my ($orig) = @_;
+    my (@spl, @urls);
+    my ($out, $val, %decoded);
+
+    @urls = split(/\&/, $orig);
+
+    foreach $thing (@urls) {
+	@spl = split(/=/, $thing);
+	($val, $out) = @spl;
+	$out =~ s/\+/ /g;
+	$out =~ s/%(..)/pack("H2", $1)/ge;
+	$decoded{$val} = $out;
+    }
+
+    return %decoded;
+}
+
+
+# Quote plain text for printing in HTML.
+# NOTE: this returns a LIST, not a single string!
+
+sub quote {
+    my (@text) = @_;
+    my (@out, $tmp);
+
+    foreach $string (@text) {
+	$tmp = $string;
+	$tmp =~ s/([$escapes])/&$escs{$1};/go;
+	push @out, $mp;
+    }
+    return @text;
+};
