@@ -1,0 +1,74 @@
+#! /bin/sh
+# $Id$
+
+init ()
+{
+          ##############################
+   album=''
+
+          ##############################
+  author=''
+
+  year=1999
+  genre=30 # Fusion
+
+
+  file_author=`acronymize "$author"`
+  file_album=`acronymize "$album"`
+}
+
+acronymize ()
+{
+  echo "$*" \
+     | sed -e "s/^/ /" \
+           -e "s/ *\([^ ]\)[^ ]*/\1/g" \
+           -e "y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+}
+
+label ()
+{
+  file="track$1.cdda.mp3"
+  title="$2"
+  comment="$3"
+
+  touch -r "$file" .stamp
+
+  mp3info -W "$file"
+  mp3info -t "$title" \
+          -l "$album" \
+          -a "$author" \
+          -c "$comment" \
+          -y "$year" \
+          -g "$genre" \
+    "$file"
+
+  touch -r .stamp "$file"
+  rm -f .stamp
+}
+
+rename ()
+{
+  old="track$1.cdda.mp3"
+  title="$2"
+  comment="$3"
+
+  new=`echo "$title $comment" \
+         | sed -e "s/  / /g" \
+               -e "s/ $//" \
+               -e "y/'[(_ /-----/" \
+               -e "s/[]):]//g"`
+  new="$file_author:$file_album-$1:$new.mp3"
+  mv -v "$old" "$new"
+}
+
+doit ()
+{
+         ##############################   ##############################
+  $1 01 "Example Title"                  "Example Comment"
+}
+
+init
+doit label
+doit rename
+
+# eof
