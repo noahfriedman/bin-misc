@@ -1,4 +1,0 @@
-#!/bin/sh
-# $Id$
-
-exec mp3info -f 'mp3info -a "%a" -l "%l" -t "%t" -c "%c" -y "%y" -g "%#" "%f"' ${1+"$@"}
