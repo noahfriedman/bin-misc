@@ -1,0 +1,92 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use Symbol;
+
+(my $progname = $0) =~ s|.*/||;
+
+sub sms_msgs ($;$$$)
+{
+  my ($name, $phone, $email, $referenceno) = @_;
+
+  my @vcard;
+  push @vcard, "BEGIN:VCARD";
+  push @vcard, "FN:"       . $name  if $name;
+  push @vcard, "TEL;HOME:" . $phone if $phone;
+  push @vcard, "EMAIL:"    . $email if $email;
+  push @vcard, "END:VCARD";
+
+  $referenceno = sprintf ("%.2d", $referenceno);
+
+  my $segment = 1;
+  my @encoded;
+  for my $l (@vcard)
+    {
+      # //SCKL -> identify WDP Datagram Addr Scheme
+      # 23F5 -> destination port
+      # 23F5 -> source port
+      # xx -> reference number
+      # yy -> number of mail segments (4 or 5 for a vcard)
+      # zz -> segment number
+      my $encoded = join ("",
+                          "//SCKL",
+                          "23F4",
+                          "23F4",
+                          $referenceno,
+                          sprintf ("%.2d", scalar @vcard),
+                          sprintf ("%.2d ", $segment));
+
+      # hex-encode line
+      map { $encoded .= sprintf ("%x", ord $_) } split (//, $l);
+      $encoded .= "0d0a";
+
+      push @encoded, $encoded;
+      $segment++;
+    }
+
+  return \@encoded;
+}
+
+
+sub usage
+{
+  print "Usage: $progname {options}\n
+Options are:
+-n, --name
+-p, --phone
+-e, --email
+-s, --sms-address\n";
+  exit (1);
+}
+
+sub parse_options ()
+{
+  my %opt;
+
+  Getopt::Long::config ('bundling', 'autoabbrev');
+  GetOptions ("h|help",           \&usage,
+              "n|name=s",         sub { $opt{name}  = $_[1] },
+              "p|phone=s",        sub { $opt{phone} = $_[1] },
+              "e|email=s",        sub { $opt{email} = $_[1] },
+              "s|sms-address=s",  sub { $opt{sms}   = $_[1] },
+             );
+  return \%opt;
+}
+
+sub main ()
+{
+  my $opt = parse_options ();
+  my $encoded = sms_msgs ($opt->{name}, $opt->{phone}, $opt->{email}, 1);
+
+  for my $line (reverse @$encoded)
+    {
+      print $line, "\n";
+    }
+}
+
+main ();
+
+# local variables:
+# mode: perl
+# end:
