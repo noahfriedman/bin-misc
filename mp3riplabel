@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: mp3riplabel,v 1.6 2000/01/07 19:00:18 friedman Exp $
+# $Id: mp3riplabel,v 1.7 2000/05/02 05:32:42 friedman Exp $
 
 file-template ()
 {
@@ -73,8 +73,9 @@ rename ()
   title="$2"
   comment="${3-$defcomment}"
 
-  new=`filter "$title" "$comment"`
-  new="$file_author.$file_album.$1.$new.mp3"
+  #new=`filter "$title" "$comment"`
+  #new="$file_author.$file_album.$1.$new.mp3"
+  new="$author - $album - $1 - $title.mp3"
 
   case "$new" in
     "$old" ) : ;;
@@ -87,7 +88,7 @@ init ()
               ##############################
        album=''
       author=''
-  defcomment=''
+  defcomment=' '
 
   year=
   genre=
