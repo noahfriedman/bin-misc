@@ -1,7 +1,13 @@
 #! /bin/sh
-# $Id$
+# $Id: whois,v 1.1 1999/08/25 22:15:40 friedman Exp $
 
-run-next $0 ${1+"$@"} \
+if { jwhois --version } > /dev/null 2>&1 ; then
+  whois="jwhois"
+else
+  whois=`run-next -p "$0"`
+fi
+
+"$whois" ${1+"$@"} \
  | perl -e '
      $/ = undef;
      $buf = <>;
