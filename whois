@@ -1,0 +1,14 @@
+#! /bin/sh
+# $Id$
+
+run-next $0 ${1+"$@"} \
+ | perl -e '
+     $/ = undef;
+     $buf = <>;
+     @s = ("The Data in Network Solutions.*abide by this policy.\n+",
+           ".*www.nic.fr/info/whois/dbcopyright.html\n+",
+           "The ARIN Registration Services Host.*NIPRNET Information.\n+",
+          );
+     foreach $r (@s) { if ($buf =~ /$r/s) { $buf =~ s/$r//s; last; } }
+     print $buf;
+   '
