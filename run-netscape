@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: run-netscape,v 1.2 1997/06/10 10:14:36 friedman Exp $
+# $Id: run-netscape,v 1.3 1997/06/10 10:18:26 friedman Exp $
 
 ver="$1"; shift
 nam="$1"; shift
@@ -20,16 +20,17 @@ case "$nam" in
   '' | normal ) : ;;
   * )
     MOZNAME="$nam"
-    export MOZNAME
+    MOZPROG="$nam"
+    export MOZNAME MOZPROG
    ;;
 esac
 
 HOME=$HOME/etc/www/netscape
 export HOME
 
-case "$ver" in
-  4* ) HOME="$HOME/dogbert" ;;
-esac
+# case "$ver" in
+#   4* ) HOME="$HOME/dogbert" ;;
+# esac
 
 exec netscape-fe ${1+"$@"}
 

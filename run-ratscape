@@ -1,0 +1,2 @@
+#!/bin/sh
+exec run-netscape 4 ratscape ${1+"$@"}
