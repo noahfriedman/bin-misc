@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: mp3riplabel,v 1.4 1999/12/19 04:01:21 friedman Exp $
+# $Id: mp3riplabel,v 1.5 1999/12/28 00:08:32 friedman Exp $
 
 file-template ()
 {
@@ -14,9 +14,9 @@ file-template ()
 
   tmpl_author=`filter "$author"`
   tmpl_album=`filter "$album"`
-  for f in "$tmpl_author.$tmpl_album-$1."*".mp3" \
-           "$file_author.$file_album-$1."*".mp3" \
-           "$file_author.$tmpl_album-$1."*".mp3"
+  for f in "$tmpl_author.$tmpl_album"?"$1."*".mp3" \
+           "$file_author.$file_album"?"$1."*".mp3" \
+           "$file_author.$tmpl_album"?"$1."*".mp3"
   do
     if [ -f "$f" ]; then
       echo "$f"
@@ -75,7 +75,7 @@ rename ()
   comment="${3-$defcomment}"
 
   new=`filter "$title" "$comment"`
-  new="$file_author.$file_album-$1.$new.mp3"
+  new="$file_author.$file_album.$1.$new.mp3"
 
   case "$new" in
     "$old" ) : ;;
