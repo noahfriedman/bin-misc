@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id$
+# $Id: p4-init-env,v 1.1 1999/10/17 06:42:15 friedman Exp $
 
 # Commentary:
 
@@ -72,6 +72,12 @@ case "$SHELL" in
     echo "setenv P4PORT   $P4PORT;"
     echo "setenv P4USER   $P4USER;"
     echo "setenv P4CLIENT $P4CLIENT;"
+   ;;
+  emacs | emacs-* | */emacs | */emacs-* )
+    echo "(progn"
+    echo "  (setenv \"P4PORT\"   \"$P4PORT\")"
+    echo "  (setenv \"P4USER\"   \"$P4USER\")"
+    echo "  (setenv \"P4CLIENT\" \"$P4CLIENT\"))"
    ;;
   * )
     echo "P4PORT=$P4PORT;"
