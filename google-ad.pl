@@ -4,7 +4,7 @@ exec ${PERL-perl} -Sx $0 ${1+"$@"}
 
 # Copyright (C) 2002 Frank Xavier Ledo
 
-# $Id$
+# $Id: google-ad.pl,v 1.1 2002/07/11 08:24:21 friedman Exp $
 
 # Author: Frank Xavier Ledo <kermit@perkigoth.com>
 # Maintainer: kermit@perkigoth.com
@@ -96,11 +96,11 @@ sub main ()
           s/<[^>]*>/ /g;           # strip all html
           s/Interest://;           # strip Google interest markings
           s/Affiliate.//;          # strip Google affiliate markings
-          s/&[^;]*;//g;            # strip &tags;
-          s/  / /g;
-          s/ \./\./g;
+          s/&[^;\s]*;//g;          # strip &tags;
           s/\n//g;
           s/^\s+//;
+          s/ +/ /g;
+          s/ \./\./g;
 
           print $_, "\n" if $_;
           last;
