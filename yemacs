@@ -1,14 +1,25 @@
 #!/bin/bash2
+# $Id$
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
-ulimit -Sd 65535
+#ulimit -Sd 65535
+ulimit -Sd 262144
 
-ydir=`cd /fs/u2/sys/emacs-21-build/current/src && /bin/pwd`
+builddirs='
+   /fs/u2/sys/emacs-21-build/current/src
+   /fs/u3/sys/emacs-21-build/current/src
+   /fs/u1/scratch/src/emacs/build/current/src
+'
 
-test -e $ydir/-emacs || ln -s emacs $ydir/-emacs
+for dir in $builddirs; do
+  if [ -d "$dir" ]; then
+    ydir=`cd $dir && /bin/pwd`
+    test -e $ydir/-emacs || ln -s emacs $ydir/-emacs
+    PATH=$ydir:$PATH
+    export PATH
+    exec -l emacs ${1+"$@"}
+  fi
+done
 
-PATH=$ydir:$PATH
-export PATH
-
-exec -l emacs ${1+"$@"}
+exec emacs ${1+"$@"}
