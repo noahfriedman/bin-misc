@@ -1,6 +1,18 @@
 #!/bin/sh
+# $Id$
 
 TZ=GMT
 export TZ
 
-exec touch -t 010100001970 ${1+"$@"}
+if test touch --version 2> /dev/null ; then
+  exec touch -t 010100001970.00 ${1+"$@"}
+else
+  exec perl -e '
+    foreach $file (@ARGV)
+      {
+        @statinfo = stat ($file);
+        utime ($statinfo[8], 0, $file);
+      }' -- ${1+"$@"}
+fi
+
+# touch-epoch ends here
