@@ -1,0 +1,30 @@
+#!/bin/sh
+# dirbits --- convert `ls' output permission bits to corresponding octal
+
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 1996-08-28
+
+# $Id$
+
+# Commentary:
+
+# Convert the rwxrwxrwx perm string from ls into its corresponding octal
+# value.
+
+# Code:
+
+ls -ld ${1+"$@"} \
+ | sed -ne '
+      s/^.\(.........\).*$/000\1/
+      s/^000\(.*\)T$/001\1-/
+      s/^00\([01].....\)S/01\1-/
+      s/^0\([01][01]..\)S/1\1-/
+      s/^000\(.*\)t$/001\1x/
+      s/^00\([01].....\)s/01\1x/
+      s/^0\([01][01]..\)s/1\1x/
+      y/rwx-/1110/
+      s/^/2 i /
+      s/$/ 8 o p/p' \
+ | dc
+
+# dirbits ends here
