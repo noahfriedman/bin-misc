@@ -1,10 +1,10 @@
 #!/bin/sh
-# $Id$
+# $Id: touch-epoch,v 1.2 1996/10/23 01:41:47 friedman Exp $
 
 TZ=GMT
 export TZ
 
-if test touch --version 2> /dev/null ; then
+if touch --version 2> /dev/null ; then
   exec touch -t 010100001970.00 ${1+"$@"}
 else
   exec perl -e '
