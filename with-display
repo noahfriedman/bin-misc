@@ -1,6 +1,0 @@
-#!/bin/sh
-DISPLAY="$1"
-export DISPLAY
-shift
-exec ${1+"$@"}
-# eof

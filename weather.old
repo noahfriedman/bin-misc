@@ -1,2 +1,0 @@
-#! /bin/sh
-exec lynx -dump 'http://www.mit.edu:8001/weather?'"${1-AUS}"
