@@ -4,7 +4,7 @@
 # Created: 1993-06-17
 # Public domain.
 
-# $Id: aaa-init,v 1.3 1994/07/12 20:42:04 friedman Exp friedman $
+# $Id: aaa-init,v 1.4 1994/11/16 22:41:44 friedman Exp friedman $
 
 # Commentary:
 
@@ -19,7 +19,7 @@
 # scripts without causing an undefined command to be executed.
 fn-\f = {}
 
-# literal escape character. 
+# literal escape character.
 e = \033
 
 # prefix for DCS start, quoted for power-on string
@@ -39,7 +39,7 @@ PF4-prefix  = 'K';    PF10-prefix = 'Q'
 PF5-prefix  = 'L';    PF11-prefix = 'R'
 PF6-prefix  = 'M';    PF12-prefix = 'S'
 
-# DCS prefix for shifted PFn keys. 
+# DCS prefix for shifted PFn keys.
 SPF1-prefix  = 'T';   SPF7-prefix  = 'Z'
 SPF2-prefix  = 'U';   SPF8-prefix  = '['
 SPF3-prefix  = 'V';   SPF9-prefix  = '\'
@@ -48,7 +48,7 @@ SPF5-prefix  = 'X';   SPF11-prefix = '^'
 SPF6-prefix  = 'Y';   SPF12-prefix = '_'
 
 
-# Desired strings. 
+# Desired strings.
 
 if { ~ $1 ai boston cambridge mit gnu } \
      {
@@ -69,6 +69,9 @@ if { ~ $1 ai boston cambridge mit gnu } \
      } \
    { ~ $1 austin cli ut utexas || ~ $1 () } \
      {
+       # Illuminati Online (io.com)
+       SPF9 = 'ATDT4488950'^$qCRLF
+
        # telesys.ots.utexas.edu, the general UT dialup server
        SPF10 = 'ATDT4759996'^$qCRLF
 
@@ -96,5 +99,5 @@ let (pstring = '')
 
     echo -n $pstring
   }
- 
+
 # aaa-init ends here
