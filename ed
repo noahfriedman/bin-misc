@@ -2,9 +2,9 @@
 # Run GNU ed with `-G' (backward compatibility option), or traditional ed
 # with no additional options.
 
-# $Id$
+# $Id: ed,v 1.1 1996/03/05 22:02:42 friedman Exp $
 
-ed=`run-next -s 2 -p ed`
+ed=`run-next -p $0`
 
 if $ed --version > /dev/null 2>&1; then
   exec $ed -G ${1+"$@"}
