@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: p4-init-env,v 1.10 2001/10/31 08:38:18 friedman Exp $
+# $Id: p4-init-env,v 1.11 2001/11/11 02:23:03 friedman Exp $
 
 # Commentary:
 
@@ -69,7 +69,7 @@ case "$overridep:${P4PORT+set}" in
       209.185.141.1 )       P4PORT=juniper   ;; # sc3
       64.75.36.1 )          P4PORT=hematite  ;; # sc4/2k, search
 
-      209.67.20[46].1 )     P4PORT=ruby      ;; # va1, va2
+      66.196.9[789].1 )     P4PORT=ruby      ;;
       205.188.182.253 \
       | 205.188.183.6[12] \
       | 205.188.184.254 )   P4PORT=sapphire  ;; # va3/4
