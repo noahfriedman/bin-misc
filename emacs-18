@@ -1,2 +1,0 @@
-#!/bin/sh
-exec run-version 18.59 emacs ${1+"$@"}

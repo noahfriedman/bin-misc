@@ -1,34 +1,5 @@
 #! /bin/sh
-# $Id: run-netscape,v 1.7 1999/10/06 09:24:49 friedman Exp $
-
-case "$1" in
-  -* ) ;;
-  * )
-    ver="$1"; shift
-    nam="$1"; shift
-
-    case "$ver" in
-      '' | any ) : ;;
-      *.* )
-        MOZVERSION="$ver"
-        export MOZVERSION
-       ;;
-      * )
-        MOZMAJORVERSION="$ver"
-        export MOZMAJORVERSION
-       ;;
-    esac
-
-    case "$nam" in
-      '' | normal ) : ;;
-      * )
-        MOZNAME="$nam"
-        MOZPROG="$nam"
-        export MOZNAME MOZPROG
-       ;;
-    esac
-   ;;
-esac
+# $Id: run-netscape,v 1.8 1999/11/01 09:37:06 friedman Exp $
 
 HOME=$HOME/etc/www/netscape
 export HOME
@@ -40,6 +11,6 @@ elif [ -f "${prefs}.append" ] && [ -f "$prefs" ]; then
   cat "${prefs}.append" >> "$prefs"
 fi
 
-exec netscape-fe ${1+"$@"}
+exec netscape ${1+"$@"}
 
 # eof

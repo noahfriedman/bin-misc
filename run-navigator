@@ -1,3 +1,0 @@
-#!/bin/sh
-#!/bin/sh
-exec run-netscape 3 navigator ${1+"$@"}
