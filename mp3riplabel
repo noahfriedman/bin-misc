@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: mp3riplabel,v 1.1 1999/10/03 07:13:56 friedman Exp $
+# $Id: mp3riplabel,v 1.2 1999/10/03 08:01:31 friedman Exp $
 
 init ()
 {
@@ -9,8 +9,8 @@ init ()
           ##############################
   author=''
 
-  year=1999
-  genre=30 # Fusion
+  year=
+  genre=
 
 
   file_author=`acronymize "$author"`
@@ -19,10 +19,15 @@ init ()
 
 acronymize ()
 {
-  echo "$*" \
-     | sed -e "s/^/ /" \
-           -e "s/ *\([^ ]\)[^ ]*/\1/g" \
-           -e "y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+  case "$*" in
+    *" "* | *-* )
+      echo "$*" \
+         | sed -e "s/^/ /" \
+               -e "s/ *\([^ ]\)[^ ]*/\1/g" \
+               -e "y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
+     ;;
+    * ) echo "$*" ;;
+  esac
 }
 
 label ()
@@ -56,7 +61,7 @@ rename ()
          | sed -e "s/  / /g" \
                -e "s/ $//" \
                -e "y/[(_ /----/" \
-               -e "s/[]):']//g"`
+               -e "s/[]):.'!?]//g"`
   new="$file_author:$file_album-$1:$new.mp3"
   mv -v "$old" "$new"
 }
