@@ -1,0 +1,5 @@
+#!/usr/local/gnu/bin/bash
+e=`echo -ne '\033'`    # get a literal ESC character
+echo -ne "$e[0m"      # put in normal attribute mode
+echo -ne "$e(B$e)B"   # switch to ascii character set
+# eof
