@@ -1,0 +1,8 @@
+#! /bin/sh
+# $Id$
+
+# See also http://www.gnu.org/software/devel.html#CVS
+CVSROOT=:pserver:anoncvs@subversions.gnu.org:/home/cvs
+export CVSROOT
+
+exec ${CVS-cvs} ${1+"$@"}
