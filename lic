@@ -1,9 +1,10 @@
 #!/bin/sh
-# $Id$
+# $Id: lic,v 1.1 2002/07/22 03:51:11 friedman Exp $
 
 ls -la ${1+"$@"} \
-  | perl -ane '($F[4] = reverse $F[4]) =~ s/(\d{3})/$1,/go;
-               $F[4] = reverse $F[4];
+  | perl -ane '$x = reverse $F[4];
+               $x =~ s//$1,$2/o while ($x =~ /(\d{3})(\d)/o);
+               $F[4] = reverse $x;
                print "@F\n";
               ' \
   | fmtcols -Ni '^total'
