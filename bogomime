@@ -1,0 +1,389 @@
+#!/usr/local/bin/perl -w
+#
+# bogomime - filter to convert Sun mailtool messages with attachments
+#            to MIME-encoded messages
+#
+# Copyright (C) 1997 Bryan O'Sullivan
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# To obtain a copy of the GNU General Public License, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+# MA 02111-1307, USA.
+#
+# COMMENTARY:
+#
+# This program operates as a filter; it takes a message on stdin,
+# munges it, and spits it out again on stdout.
+#
+# You can call this program as a filter from within procmail by
+# including a section such as the following in your ~/.procmailrc:
+#
+#   ## Convert messages sent by Sun's mailtool to MIME.
+#   :0 fhbw
+#   * ^Content-Type: X-Sun-attachment
+#   | bogomime
+#
+# As things currently stand, this program has a number of very useful
+# features:
+#
+# - Recursively handles mailtool message digests, such that messages
+#   are maintained in sane ways
+#
+# - Converts uuencoded bodyparts to use base64 encoding, so that users
+#   don't have to jump through hoops to read bodyparts
+#
+# - Goes to some lengths not to screw up when tweaking encodings, so
+#   users are unlikely to lose data, even in the event of unforeseen
+#   problems
+#
+# Note that this program is not complete or necessarily correct; it
+# makes certain assumptions about the way mailtool mail is encoded
+# that just happen to almost always be correct.  However, I have not
+# run into any problems thus far.
+#
+# If you make tweaks to the code that you think may be generally
+# applicable, please send me context diffs; if I find your changes
+# useful, I may incorporate them.  Feedback is always appreciated.
+#
+# Bryan O'Sullivan <bos@serpentine.com>
+
+require 5.000;
+
+## Change these if you need to.
+
+# The location of a standard uudecode utility.
+$uudecode = "/usr/bin/uudecode";
+
+# The location of some program that will take input on stdin and spit
+# it out base64-encoded on stdout.
+$base64_encode = "/opt/local/bin/base64-encode";
+
+# Mappings from Sun attachment types to MIME types.  Anything not
+# listed here defaults to application/octet-stream.
+%mappings =
+    qw(
+       ae-file			text/plain
+       audio-file		audio/basic
+       c-file			text/plain
+       cshell-script		text/plain
+       default			text/plain
+       gif-file			image/gif
+       jpeg-file		image/jpeg
+       mail-file		multipart/digest
+       mail-message		multipart/digest
+       message			multipart/digest
+       postscript-file		application/postscript
+       readme-file		text/plain
+       shell-script		text/plain
+       sun-deskset-message	multipart/digest
+       text			text/plain
+       );
+
+## No user-serviceable parts beyond this point.
+
+# Keep "perl -w" happy.
+
+$bodycount = 0;
+$time = time();
+srand($time);
+
+@imprecations = qw(cruft pain lossage braindamage headache kludge hack
+		   mess disaster moby sludge yeugh dummitude glorp evil
+		   stinkiness bogosity bletcherousness heinosity);
+
+@funk = <STDIN>;
+
+$text = &process_message(\@funk);
+
+print @$text;
+
+exit(0);
+
+# Process a message in Unix mailbox format.  Sole parameter is a
+# reference to a list of all lines in the message.
+
+sub process_message {
+    my ($complete_header, $header_body, $line, $sun_attachment, $header, $content_length,
+	@headers, @body, @return, $prev_header, $prev_header_body, $content_encoding,
+	$content_type, $body);
+    my ($text) = @_;
+
+    $complete_header = "";
+
+    # Grunge through the headers, and try to figure out whether this
+    # is a Sun mailtool message with attachments.
+
+  header:
+    while ($line = shift @$text) {
+
+	# Ignore mailbox format crud.
+
+	if ($line =~ /^From /) {
+	    push @headers, $line;
+
+	} elsif ($line eq "\n" || $line =~ /^([^\s]*):\s*(.*)$/) {
+
+	    # Every time we see the beginning of a new header, process
+	    # its predecessor.
+
+	    if ($complete_header ne "") {
+		$header_body =~ s/[\n\s]+/ /g;
+
+		if ($header eq "content-type" && $header_body eq "x-sun-attachment") {
+		    $sun_attachment = 1;
+		    $complete_header = "X-Sun-" . $complete_header;
+		} elsif ($header eq "content-length") {
+		    $content_length = $header_body;
+		    $complete_header = "X-Sun-" . $complete_header;
+		}
+		push @headers, $complete_header;
+	    }
+
+	    last header if ($line eq "\n");
+
+	    $line =~ /^([^\s]*):\s*(.*)$/;
+
+	    $header = lc $1;
+	    $header_body = lc $2;
+	    $complete_header = $line;
+	} else {
+	    $header_body .= lc $line;
+	    $complete_header .= $line;
+	}
+    }
+
+    if ($sun_attachment) {
+	$boundary = &make_boundary;
+
+	# Stuff out some standard MIME headers.  We don't yet know the
+	# true content length of this message.
+
+	push @headers, <<END_MIME_HEADER;
+X-Mime-Munger: bogomime 0.1 - <bos\@serpentine.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="$boundary"
+Content-Transfer-Encoding: 7bit
+END_MIME_HEADER
+
+        $complete_header = "";
+
+	my ($in_bodypart_headers, @bodypart);
+
+	# This must default to empty, in order for handle_bodypart to
+	# work correctly for the toplevel message.
+
+	$content_type = "";
+
+	$content_encoding = "7bit";
+
+	# Processing the body of the message is a pain.  We have to
+	# watch out for bodypart headers, and process bodyparts with
+	# some care.
+
+      body:
+	while ($line = shift @$text) {
+	    if ($in_bodypart_headers) {
+		if ($line eq "\n" || $line =~ /^(.*):\s*(.*)$/) {
+		    if ($complete_header ne "") {
+			$header_body =~ s/[\n\s]+/ /g;
+
+			if ($header eq "x-sun-data-type") {
+			    if (defined $mappings{$header_body}) {
+				$content_type = $mappings{$header_body};
+			    } else {
+				$content_type = "application/octet-stream";
+			    }
+			} elsif ($header eq "x-sun-encoding-info") {
+			    if ($header_body =~ /uuencode/) {
+				$content_encoding = "uuencode";
+			    } else {
+				$content_encoding = $header_body;
+			    }
+			}
+			push @body, $complete_header;
+		    }
+		    if ($line eq "\n") {
+			# about to enter the body of a bodypart
+			$complete_header = "";
+			$in_bodypart_headers = 0;
+			$#bodypart = -1;
+		    } else {
+			$header = lc $1;
+			$header_body = lc $2;
+			$complete_header = $line;
+		    }
+		} else {
+		    $header_body .= lc $line;
+		    $complete_header .= $line;
+		}
+	    } elsif ($line eq "----------\n") {
+		# about to enter the header of a body part
+
+		$body = &handle_bodypart($content_type, $content_encoding,
+					 \@bodypart);
+
+		push @body, @$body, "\n--$boundary\n";
+		$in_bodypart_headers = 1;
+	    } else {
+		push @bodypart, $line;
+	    }
+	}
+	$body = &handle_bodypart($content_type, $content_encoding, \@bodypart);
+	push @body, @$body, "\n--$boundary--\n";
+
+	$body = join('', @body);
+	my ($length) = length $body;
+
+	push @return, @headers, <<END_LAST_MIME_HEADER;
+Content-Length: $length
+
+END_LAST_MIME_HEADER
+	push @return, @body;
+    } else {
+	push @return, @headers, <<END_VANILLA_HEADER;
+Content-Length: $content_length
+
+END_VANILLA_HEADER
+	push @return, @$text;
+    }
+
+    return \@return;
+}
+
+
+# Indicate whether a string is in a list of other strings.  List is
+# passed by reference.
+
+sub in {
+    my ($key) = shift;
+    my ($values) = shift;
+
+    foreach $value (@$values) {
+	if ($key eq $value) {
+	    return 1;
+	}
+    }
+
+    return 0;
+}
+
+
+# Handle a mailtool bodypart, with translation to a sane encoding
+# format performed if necessary.
+#
+# @@@ We should handle files that have been compressed, then
+# uuencoded.  Bleah.
+
+sub handle_bodypart {
+    my ($content_type) = shift;
+    my ($content_encoding) = shift;
+    my ($body) = shift;
+    my (@return);
+
+    if ($content_type eq "") {
+	return $body;
+    }
+
+    # The program structure here carefully tries to ensure that should
+    # firing off other programs cause problems, we will not lose any
+    # data (though we may leave it encoded in a way that is a pain to
+    # deal with).
+
+    if ($content_encoding eq "uuencode") {
+	if (open(UUDECODE, "| $uudecode")) {
+	    my ($bogofile) = "/tmp/bogomime.$$.uudecode";
+
+	    shift @$body;
+
+	    @$body = ("begin 600 $bogofile\n", @$body);
+	    print UUDECODE @$body;
+	    close(UUDECODE);
+
+	    if ($content_type eq "multipart/digest") {
+		if (open(DECODED, "< $bogofile")) {
+		    @$body = <DECODED>;
+		    close(DECODED);
+		}
+
+		# Since forwarded mail is likely to be in Unix mailbox
+		# format, we remove the mailbox header, if it exists.
+		# This should leave the message in fairly sane RFC822
+		# format.
+
+		if ($$body[0] =~ /^From /) {
+		    shift @$body;
+		}
+
+		my ($text) = &process_message($body);
+		$body = $text;
+	    } else {
+		# If a bodypart was uuencoded, we base64-encode it.
+
+		if (open(RECODED, "$base64_encode < $bogofile |")) {
+		    @$body = <RECODED>;
+		    $content_encoding = "base64";
+		    close(RECODED);
+		}
+	    }
+	    unlink($bogofile);
+	}
+    }
+
+    if ($content_type eq "multipart/digest") {
+	my ($boundary) = &make_boundary;
+	my ($foo) = join('', @$body);
+	push @return, <<END_DIGEST_CRUFT;
+Content-Type: $content_type;
+	boundary="$boundary"
+Content-Transfer-Encoding: 7bit
+
+This is a forwarded message, BogoMIME encapsulation.
+
+--$boundary
+
+$foo
+
+--$boundary--
+END_DIGEST_CRUFT
+    } else {
+	push @return, <<END_BODYPART_HEADER;
+Content-Type: $content_type
+Content-Transfer-Encoding: $content_encoding
+
+END_BODYPART_HEADER
+        push @return, @$body;
+    }
+
+    return \@return;
+}
+
+
+# Make a new bodypart boundary.
+
+sub make_boundary {
+    my ($random) = int(rand($time));
+    my (@foulness, $choice);
+    my ($i);
+
+    for ($i = 0; $i < ($random % 4) + 1; $i++) {
+	$choice = $imprecations[($random * ($i + 1)) % ($#imprecations + 1)];
+
+	if (!&in($choice, \@foulness)) {
+	    push @foulness, $choice;
+	}
+    }
+
+    $bodycount += 1;
+
+    return "bogomime/$time/$$/$bodycount/" . join("/", @foulness);
+}
