@@ -1,17 +1,19 @@
 #!/bin/sh
-# $Id: p4,v 1.6 2002/08/05 06:07:13 friedman Exp $
+# $Id: p4,v 1.7 2002/08/19 02:17:02 friedman Exp $
 
-case ":${P4CONFIG+set}:${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
-  :set:* | ::set:set:set: ) : ;;
-  * )
-    eval `p4-init-env -sh`
+case ":${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
+  :set:set:set: ) : ;;
+  * ) eval `p4-init-env -sh` ;;
+esac
 
+case "${P4CONFIG+set}" in
+  set )
     # Allow .p4config file in the current or any parent directory to
     # override default parameters
     dir=`/bin/pwd`
     while [ "$dir" != "NULL" ]; do
-      if [ -f "$dir/.p4config" ]; then
-        . "$dir/.p4config"
+      if [ -f "$dir/$P4CONFIG" ]; then
+        . "$dir/$P4CONFIG"
         break
       fi
       dir=`echo "$dir" | sed -e 's/^$/NULL/' -e 's/\/[^\/]*$//'`
