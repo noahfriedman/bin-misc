@@ -2,7 +2,7 @@
 exec ${PERL-perl} -Sx $0 ${1+"$@"}
 #!perl
 #
-# $Id$
+# $Id: mkthumbnail,v 1.1 2001/11/06 23:39:06 friedman Exp $
 #
 # 'HTMLThumbnail', written by Benjamin Franz, snowhare@nihongo.org
 #
@@ -311,7 +311,7 @@ $edgewidth	  = $opt{'edgewidth'} if defined $opt{'edgewidth'};
 $thumbnailsize	  = $opt{'size'} if defined $opt{'size'};
 $qualityfactor	  = $opt{'quality'} if defined $opt{'quality'};
 $imagesperrow	  = $opt{'rowsize'} if defined $opt{'rowsize'};
-$catalogdirectory = $opt{'catalogdir'} if defined $opt{'cagalogdir'};
+$catalogdirectory = $opt{'catalogdir'} if defined $opt{'catalogdir'};
 $tempdir	  = $opt{'tempdir'} if defined $opt{'tempdir'};
 $linkimage	  = $opt{'link'} if defined $opt{'linkdir'};
 $makedropshadow   = $opt{'dropshadow'} if defined $opt{'dropshadow'};
