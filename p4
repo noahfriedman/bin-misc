@@ -1,8 +1,8 @@
 #!/bin/sh
-# $Id: p4,v 1.2 2000/01/04 17:42:52 friedman Exp $
+# $Id: p4,v 1.3 2000/01/07 19:06:13 friedman Exp $
 
-case ":${P4CONFIG}:${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
-  *:set:* ) : ;;
+case ":${P4CONFIG+set}:${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
+  :set:* | ::set:set:set: ) : ;;
   * ) eval `p4-init-env -sh` ;;
 esac
 
