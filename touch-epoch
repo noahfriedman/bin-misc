@@ -1,11 +1,11 @@
 #!/bin/sh
-# $Id: touch-epoch,v 1.3 1997/03/28 09:16:45 friedman Exp $
+# $Id: touch-epoch,v 1.4 1997/03/28 09:17:12 friedman Exp $
 
 TZ=GMT
 export TZ
 
 if touch --version > /dev/null 2>&1 ; then
-  exec touch -t 010100001970.00 ${1+"$@"}
+  exec touch -d 'Jan 01, 1970 00:00' ${1+"$@"}
 else
   exec perl -e '
     foreach $file (@ARGV)
