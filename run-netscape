@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: run-netscape,v 1.4 1997/09/08 03:59:54 friedman Exp $
+# $Id: run-netscape,v 1.5 1999/01/21 17:07:39 friedman Exp $
 
 case "$1" in
   -* ) ;;
@@ -32,6 +32,13 @@ esac
 
 HOME=$HOME/etc/www/netscape
 export HOME
+
+prefs=$HOME/.netscape/preferences.js
+if [ -e $HOME/.netscape/lock ]; then
+  :
+elif [ -f "${prefs}.append" ] && [ -f "$prefs" ]; then
+  cat "${prefs}.append" >> "$prefs"
+fi
 
 exec netscape-fe ${1+"$@"}
 
