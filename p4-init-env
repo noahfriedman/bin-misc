@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: p4-init-env,v 1.5 2000/04/07 16:59:44 friedman Exp $
+# $Id: p4-init-env,v 1.6 2000/05/08 19:33:07 friedman Exp $
 
 # Commentary:
 
@@ -42,9 +42,9 @@ case "${P4CLIENT+set}" in
   set ) : ;;
   * )
     case "$hostname" in
-      trabanten-schwein ) P4CLIENT=$uid.laptop ;;
-      puerco-del-diablo ) P4CLIENT=$uid.puerco ;;
-      * )                 P4CLIENT=$uid.inkdev ;;
+      trabanten-schwein ) P4CLIENT=$uid.laptop    ;;
+      puerco-del-diablo ) P4CLIENT=$uid.puerco    ;;
+      * )                 P4CLIENT=$uid.$hostname ;;
     esac
    ;;
 esac
@@ -64,18 +64,19 @@ case "${P4PORT+set}" in
                       -e p -e q`
 
     case "$subnet" in
-      209.1.12.1 )     P4PORT=onyx           ;;   # sc1-2
-      209.185.141.1 )  P4PORT=jade           ;;   # sc3
-      209.185.142.1 )  P4PORT=cryolite       ;;   # congo
-      209.67.204.1 )   P4PORT=ruby           ;;   # va1
-      209.185.122.1 )  P4PORT=amber          ;;   # mini cluster
-      209.185.143.1 )  P4PORT=j4000          ;;   # j4k
-      205.188.183.62 ) P4PORT=sapphire       ;;   # va3/4
-      62.172.199.1 )   P4PORT=beryl          ;;   # UK1
-      202.212.5.1 )    P4PORT=pearl          ;;   # JP1
-      209.131.*.1 )    P4PORT=inkdev         ;;   # intranet
-      192.168.1.* )    P4PORT=localhost      ;;   # splode.com intranet proxy
-      * )              P4PORT=j4000          ;;   # default
+      192.168.1.* )       P4PORT=localhost      ;;   # prv.splode.com proxy
+
+      62.172.199.* )      P4PORT=beryl          ;;   # uk1
+      202.212.5.1 )       P4PORT=pearl          ;;   # JP1
+      205.188.183.6[12] ) P4PORT=sapphire       ;;   # va3/4
+      209.1.12.1 )        P4PORT=onyx           ;;   # sc1-2
+      209.67.20[46].1 )   P4PORT=ruby           ;;   # va1/va2
+      209.185.122.1 )     P4PORT=amber          ;;   # mini cluster
+      209.185.141.1 )     P4PORT=jade           ;;   # sc3
+      209.185.142.* )     P4PORT=cryolite       ;;   # congo
+      209.185.143.1 )     P4PORT=j4000          ;;   # j4k
+      209.131.*.1 )       P4PORT=inkdev         ;;   # intranet
+      * )                 P4PORT=j4000          ;;   # default
     esac
 
     # Append default tcp port if missing.
@@ -96,7 +97,7 @@ case "$shell" in
 esac
 
 case "$shell" in
-  csh | tcsh )
+  csh | tcsh | zsh )
     echo "setenv P4PORT   $P4PORT;"
     echo "setenv P4USER   $P4USER;"
     echo "setenv P4CLIENT $P4CLIENT;"
