@@ -1,0 +1,84 @@
+#! /bin/sh
+# $Id$
+
+# Commentary:
+
+# Output proper p4 environment variable settings based on subnet.
+# These should be eval'ed by the calling shell.
+
+# Based 1999-10-15 on Ryan Hamilton's `p4set' tcsh script.
+
+# Usage: eval `p4-init-env [user]`
+#        eval `p4-init-env [-shell]`
+
+# Code:
+
+uid=`whoami`
+user=${USER-${LOGNAME-$uid}}
+hostname=${HOSTNAME-`hostname`}
+
+# Defaults which can be overridden below
+case "$1" in
+  '' ) P4USER=$user ;;
+  -* )
+    P4USER=$user
+    SHELL=`echo "x$1" | sed -e 's/^x-//'`
+    shift
+   ;;
+  *  )
+    P4USER=$1
+    shift
+   ;;
+esac
+P4CLIENT=$uid.$hostname
+
+# Determine subnet based on default route gateway
+subnet=`netstat -rn \
+         | sed -n -e '/^default/b p' \
+                  -e '/^0\.0\.0\.0/b p' \
+                  -e d \
+                  -e :p \
+                  -e 's/[ 	][ 	]*/ /g' \
+                  -e 's/^[^ ]* //' \
+                  -e 's/ .*//' \
+                  -e p -e q`
+
+case "$subnet" in
+  209.1.12.1 )     P4PORT=onyx     ;;   # sc1-2
+  209.185.141.1 )  P4PORT=jade     ;;   # sc3
+  209.185.142.1 )  P4PORT=cryolite ;;   # congo
+  209.67.204.1 )   P4PORT=ruby     ;;   # va1
+  209.185.122.1 )  P4PORT=amber    ;;   # mini cluster
+  209.185.143.1 )  P4PORT=j4000    ;;   # j4k
+  205.188.183.62 ) P4PORT=sapphire ;;   # va3/4
+  62.172.199.1 )   P4PORT=beryl    ;;   # UK1
+  202.212.5.1 )    P4PORT=pearl    ;;   # JP1
+  209.131.*.1 )                         # intranet
+    P4PORT=inkdev
+    P4CLIENT=$uid.inkdev
+   ;;
+  * )              P4PORT=j4000    ;;   # default
+esac
+
+# Append default tcp port if missing.
+case "$P4PORT" in
+  *:* ) : ;;
+  * ) P4PORT=$P4PORT:1666 ;;
+esac
+
+# Emit the right syntax based on login shell.
+case "$SHELL" in
+  csh | tcsh | */csh | */tcsh )
+    echo "setenv P4PORT   $P4PORT;"
+    echo "setenv P4USER   $P4USER;"
+    echo "setenv P4CLIENT $P4CLIENT;"
+   ;;
+  * )
+    echo "P4PORT=$P4PORT;"
+    echo "P4USER=$P4USER;"
+    echo "P4CLIENT=$P4CLIENT;"
+    echo "export P4PORT P4USER P4CLIENT;"
+  ;;
+esac
+
+# p4-init-env ends here.
