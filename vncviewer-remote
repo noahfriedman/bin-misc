@@ -1,4 +1,11 @@
 #!/bin/sh
-# $Id$
+# $Id: vncviewer-remote,v 1.1 2001/08/31 01:36:15 friedman Exp $
 
-exec with -N vncviewer -encodings 'copyrect hextile corre rre' ${1+"$@"}
+version=`vncviewer --version 2>&1 | head -1`;
+
+case "$version" in
+  TightVNC* ) encodings='copyrect tight hextile zlib corre rre' ;;
+  *         ) encodings='copyrect hextile corre rre' ;;
+esac
+
+exec with -N vncviewer -encodings "$encodings" ${1+"$@"}
