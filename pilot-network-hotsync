@@ -5,7 +5,7 @@
 # Created: 2003-04-29
 # Public domain
 
-# $Id$
+# $Id: pilot-network-hotsync,v 1.1 2003/04/30 05:05:16 friedman Exp $
 
 # Commentary:
 
@@ -81,10 +81,10 @@ USB_DEV_DEFAULT=/dev/ttyUSB0
 # device that will terminate things when the connection closes.
 funnel ()
 {
-  cat "$1" &                # handle reads
+  dd if="$1" bs=1 2> /dev/null & # handle reads
   pid=$!
-  cat > "$1" 2>/dev/null     # handle writes; exits when pppd closes link
-  kill $pid                  # must kill reader; won't exit on its own
+  dd of="$1" bs=1 2> /dev/null   # handle writes; exits when pppd closes link
+  kill $pid                      # must kill reader; won't exit on its own
 }
 
 startup_masq ()
@@ -96,8 +96,8 @@ startup_masq ()
 
 shutdown_masq ()
 {
-  echo $saved_ip_forward > /proc/sys/net/ipv4/ip_forward
   iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+  echo $saved_ip_forward > /proc/sys/net/ipv4/ip_forward
 }
 
 connect ()
@@ -106,6 +106,7 @@ connect ()
   export PNETSYNCDEV
 
   startup_masq
+  stty raw < "$PNETSYNCDEV"
   pppd pty $0 nodetach local noauth mtu 255 10.0.0.1:10.0.0.2
   shutdown_masq
 }
