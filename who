@@ -1,12 +1,16 @@
 #!/bin/sh
-# $Id: who,v 1.1 1999/12/06 06:08:27 friedman Exp $
+# $Id: who,v 1.2 2002/11/07 05:25:52 friedman Exp $
 
 who=`run-next -p $0`;
 
-if $who --version > /dev/null 2>&1 ; then
-  exec $who -Huw --lookup ${1+"$@"}
+{
+  "$who" --version | egrep 'sh-utils|coreutils|free software found'
+} > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+  exec "$who" -HTu --lookup ${1+"$@"}
 else
-  exec $who ${1+"$@"}
+  exec "$who" -HTu ${1+"$@"}
 fi
 
 # eof
