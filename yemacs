@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: yemacs,v 1.3 2003/09/08 05:50:44 friedman Exp $
+# $Id: yemacs,v 1.4 2004/02/14 21:22:12 friedman Exp $
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
@@ -11,14 +11,22 @@ builddirs='
    /fs/u3/sys/emacs-21-build/current/src
 '
 
+progname=yemacs
+case $1 in
+  -login ) progname=-emacs; shift ;;
+esac
+
 for dir in $builddirs; do
   if [ -d $dir ]; then
     ydir=`cd $dir && /bin/pwd`
-    test -e $ydir/-emacs || ln -s emacs $ydir/-emacs
+    test -e $ydir/$progname || ln -s emacs $ydir/$progname
     PATH=$ydir:$PATH
     export PATH
-    exec -l emacs ${1+"$@"}
   fi
+
+  exec -a $progname emacs "$@"
 done
 
-exec emacs ${1+"$@"}
+exec emacs "$@"
+
+# eof
