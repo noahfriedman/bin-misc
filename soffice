@@ -1,8 +1,8 @@
 #!/bin/sh
-# $Id$
+# $Id: soffice,v 1.1 2000/09/17 12:34:51 friedman Exp $
 
 case "$HOME" in
-  /u/$USER | /home/$USER ) HOME=$HOME/etc/soffice ;;
+  /u/$USER | /home/$USER ) HOME=$HOME/etc/misc ;;
 esac
 
 if [ -d $HOME/adabas ]; then
@@ -20,6 +20,6 @@ case "$1" in
     exec ${1+"$@"}
    ;;
   * )
-    exec $HOME/office52/soffice ${1+"$@"}
+    exec $HOME/.openoffice/soffice ${1+"$@"}
    ;;
 esac
