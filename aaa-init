@@ -1,0 +1,58 @@
+#!/usr/local/bin/es
+# 17-Jun-93 Noah Friedman <friedman@prep.ai.mit.edu>
+#
+# Hack for programming the Anne Arbor Ambassador power-on string to program
+# various function keys and initialize the terminal the way I want. 
+#
+# Public domain.
+
+# literal escape character. 
+e = \033
+
+# prefix for DCS start, quoted for power-on string
+qDCSstart = '~[P{@}'
+
+# CRLF sequence quoted for power-on string
+qCRLF= '{^}M{^}J'
+
+# Suffix for DCS end, quoted for power-on string.
+qDCSend = '{^}[\'
+
+# DCS prefix for unshifted PFn keys.
+PF1-prefix  = 'H';    PF7-prefix  = 'N'
+PF2-prefix  = 'I';    PF8-prefix  = 'O'
+PF3-prefix  = 'J';    PF9-prefix  = 'P'
+PF4-prefix  = 'K';    PF10-prefix = 'Q'
+PF5-prefix  = 'L';    PF11-prefix = 'R'
+PF6-prefix  = 'M';    PF12-prefix = 'S'
+
+# DCS prefix for shifted PFn keys. 
+SPF1-prefix  = 'T';   SPF7-prefix  = 'Z'
+SPF2-prefix  = 'U';   SPF8-prefix  = '['
+SPF3-prefix  = 'V';   SPF9-prefix  = '\'
+SPF4-prefix  = 'W';   SPF10-prefix = ']'
+SPF5-prefix  = 'X';   SPF11-prefix = '^'
+SPF6-prefix  = 'Y';   SPF12-prefix = '_'
+
+# Desired strings. 
+SPF10 = 'ATDT2588265'^$qCRLF
+SPF11 = 'ATDT2587022'^$qCRLF
+SPF12 = 'ATE1 L1 M1 Q0 V1 X4 S0=0 S10=50 \D0 \J1 \K3 \N2 \Q3'^$qCRLF
+
+# This assumes you want 60 lines of display initially.
+# This is quoted for power-on string.
+display-parameters = '~[[60;0;0;60;{P}'
+
+power-on-prefix = $e^'Pp'
+power-on-suffix = 'T{HANKS FOR TURNING ME ON}!~M~J'^$e^'\'
+
+let (pstring = '')
+  {
+    for (s = SPF10 SPF11 SPF12)
+      pstring = $pstring^$qDCSstart^$($s^-prefix)^$$s^$qDCSend
+    pstring = $power-on-prefix^$pstring^$display-parameters^$power-on-suffix
+
+    echo -n $pstring
+  }
+ 
+# eof
