@@ -1,0 +1,19 @@
+#! /bin/sh
+# $Id$
+
+# Read in a linux kernel patch file and print missing directory names.
+
+cat ${1+"$@"} | perl -e '
+  while (<>)
+    {
+      next if ($_ !~ /^diff/o);
+      s/.*[ \t]([^ \t]+)\/[^\/]+\n$/\1/o;
+      next if (defined ($seen{$_}));
+      $seen{$_} = 1;
+    }
+  foreach $dir (sort (keys (%seen)))
+    {
+      print "$dir\n" if (! -d "$dir");
+    }'
+
+# linux-missing-dirs ends here
