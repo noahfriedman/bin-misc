@@ -1,8 +1,8 @@
 #! /bin/sh
-# $Id$
+# $Id: cvs-subversions,v 1.1 2000/08/07 18:32:09 friedman Exp $
 
 # See also http://www.gnu.org/software/devel.html#CVS
-CVSROOT=:pserver:anoncvs@subversions.gnu.org:/home/cvs
+CVSROOT=:pserver:friedman@subversions.gnu.org:/cvs
 export CVSROOT
 
 exec ${CVS-cvs} ${1+"$@"}
