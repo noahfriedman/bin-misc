@@ -1,0 +1,26 @@
+#! /usr/local/bin/perl -w
+# ftp://ftp.eterna.com.au/bozo/bsf/attware/bozotic-zippy.tkp
+# yow your x display with this.  press the button.
+#
+# ZIPPY YOU WILL.
+
+# $Id$
+
+require 5.001;
+use Tk;
+
+$zippy_top = MainWindow->new;
+
+$zippy_button = $zippy_top->Button(-text => 'zippy me, man');
+$zippy_button->bind("<1>", \&do_zippy);
+$zippy_button->pack;
+
+MainLoop;
+
+sub do_zippy
+{
+	destroy $zippy_label if $zippy_label;
+	$zippy_quote = `yow 2> /dev/null` || "you do not have the zippy nature";
+	$zippy_label = $zippy_top->Label(-text => $zippy_quote);
+	$zippy_label->pack;
+}

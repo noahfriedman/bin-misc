@@ -1,0 +1,10 @@
+#! /bin/sh
+
+# $Id$
+
+exec with --no-tty \
+          --priority=19  \
+          space -density 3 \
+                -max-diameter 2 \
+                -delay 300000 \
+		${1+"$@"}

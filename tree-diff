@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# $Id$
+
+diff --exclude 'CVS' \
+     --exclude 'RCS' \
+     --exclude 'core' \
+     --exclude '*.core' \
+     --exclude='*.[ao]' \
+     --exclude='*~' \
+     --ignore-blank-lines \
+     --ignore-space-change \
+     --new-file \
+     --recursive \
+     --show-c-function \
+     --unified \
+  ${1+"$@"}
+
+# eof

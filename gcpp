@@ -1,0 +1,8 @@
+#! /bin/sh
+
+# $Id$
+
+ccdir=`${CC-gcc} -print-libgcc-file-name | sed -e 's/\/[^/]*$//'`
+exec $ccdir/cpp ${1+"$@"}
+
+# eof
