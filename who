@@ -1,10 +1,10 @@
 #!/bin/sh
-# $Id$
+# $Id: who,v 1.1 1999/12/06 06:08:27 friedman Exp $
 
 who=`run-next -p $0`;
 
 if $who --version > /dev/null 2>&1 ; then
-  exec $who -Hiwls ${1+"$@"}
+  exec $who -Huw --lookup ${1+"$@"}
 else
   exec $who ${1+"$@"}
 fi
