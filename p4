@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: p4,v 1.5 2000/05/26 05:10:16 friedman Exp $
+# $Id: p4,v 1.6 2002/08/05 06:07:13 friedman Exp $
 
 case ":${P4CONFIG+set}:${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
   :set:* | ::set:set:set: ) : ;;
@@ -11,7 +11,7 @@ case ":${P4CONFIG+set}:${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
     dir=`/bin/pwd`
     while [ "$dir" != "NULL" ]; do
       if [ -f "$dir/.p4config" ]; then
-        source "$dir/.p4config"
+        . "$dir/.p4config"
         break
       fi
       dir=`echo "$dir" | sed -e 's/^$/NULL/' -e 's/\/[^\/]*$//'`
