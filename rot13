@@ -1,2 +1,10 @@
 #!/bin/sh
-exec tr '[a-m][n-z][A-M][N-Z]' '[n-z][a-m][N-Z][A-M]' ${1+"$@"}
+# $Id$
+
+from='[a-m][n-z][A-M][N-Z]'
+  to='[n-z][a-m][N-Z][A-M]'
+
+case $# in
+  0 ) exec             tr "$from" "$to" ;;
+  * ) echo ${1+"$@"} | tr "$from" "$to" ;;
+esac
