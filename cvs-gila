@@ -1,0 +1,10 @@
+#! /bin/sh
+# $Id$
+
+CVSROOT=:ext:webmonkey@gila.mozilla.org:/e/jail/cvsroot
+export CVSROOT
+
+CVS_RSH=ssh
+export CVS_RSH
+
+exec ${CVS-cvs} ${1+"$@"}
