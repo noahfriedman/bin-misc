@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: whois,v 1.1 1999/08/25 22:15:40 friedman Exp $
+# $Id: whois,v 1.2 2000/01/31 18:59:02 friedman Exp $
 
 if { jwhois --version } > /dev/null 2>&1 ; then
   whois="jwhois"
@@ -14,7 +14,12 @@ fi
      @s = ("The Data in Network Solutions.*abide by this policy.\n+",
            ".*www.nic.fr/info/whois/dbcopyright.html\n+",
            "The ARIN Registration Services Host.*NIPRNET Information.\n+",
+
+           # Compuserve preamble
+           "Access to CompuServe.s WHOIS.*you agree to these terms.\n+",
+           # Compuserv postamble
+           "WHOIS data is only provided.*http://domain.compuserve.com\n+",
           );
-     foreach $r (@s) { if ($buf =~ /$r/s) { $buf =~ s/$r//s; last; } }
+     foreach $r (@s) { $buf =~ s/$r//s }
      print $buf;
    '
