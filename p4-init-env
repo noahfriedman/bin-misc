@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: p4-init-env,v 1.7 2000/05/26 05:10:16 friedman Exp $
+# $Id: p4-init-env,v 1.8 2001/09/06 12:42:06 friedman Exp $
 
 # Commentary:
 
@@ -13,10 +13,13 @@
 
 # Code:
 
+PATH=$PATH:/usr/ucb
+export PATH
+
 uid=`whoami`
 user=${USER-${LOGNAME-$uid}}
 hostname=${HOSTNAME-`hostname`}
-hostname=`echo "$hostname" | sed 's/\..*//'`
+hostname=`echo "$hostname" | sed -e 's/\..*//'`
 shell=$SHELL
 
 # Defaults which can be overridden below
@@ -27,7 +30,7 @@ case "${P4USER+set}" in
       '' ) P4USER=$user ;;
       -* )
         P4USER=$user
-        shell=`echo "x$1" | sed -e 's/^x-//'`
+        shell=$1
         shift
        ;;
       *  )
@@ -68,17 +71,17 @@ case "${P4PORT+set}" in
 
       # Production search clusters
       209.1.12.1 )          P4PORT=onyx      ;; # sc1-2
-      209.185.141.1 )       P4PORT=jade      ;; # sc3
-      64.75.36.1 )          P4PORT=hematite  ;; # sc4
+      209.185.141.1 )       P4PORT=juniper   ;; # sc3
+      64.75.36.1 )          P4PORT=hematite  ;; # sc4/2k, search
 
       209.67.20[46].1 )     P4PORT=ruby      ;; # va1, va2
       205.188.182.253 \
       | 205.188.183.6[12] \
-      | 205.188.184.254   ) P4PORT=sapphire  ;; # va3/4
+      | 205.188.184.254 )   P4PORT=sapphire  ;; # va3/4
       205.188.183.94 )      P4PORT=topaz     ;; # va5 admin
-      205.188.183.254 )     P4PORT=sapphire  ;; # va5 SE nodes
+      205.188.183.254 )     P4PORT=topaz     ;; # va5 search nodes
 
-      62.172.199.* )        P4PORT=beryl     ;; # uk1
+      62.172.199.1 )        P4PORT=beryl     ;; # uk1
       213.216.143.1 )       P4PORT=ivory     ;; # uk2
 
       216.35.11[678].1 )    P4PORT=feldspar  ;; # gigadoc
@@ -87,18 +90,17 @@ case "${P4PORT+set}" in
       211.169.241.1 )       P4PORT=kyanite   ;; # kr1
       202.212.5.1 )         P4PORT=pearl     ;; # jp1
       210.172.228.129 )     P4PORT=lapis     ;; # jp2
-      209.185.143.1 )       P4PORT=jade      ;; # j4k
+      209.185.143.1 )       P4PORT=juniper   ;; # j4k
 
       # Commerce nets; obsolete?
       64.41.217.1 )         P4PORT=diamond   ;; # congo
-      64.75.7.1 )           P4PORT=dilithium ;; # sc4/2k commerce beta
+      64.75.7.1 )           P4PORT=dilithium ;; # sc4/2k, commerce beta
+      64.75.8.1 )           P4PORT=juniper   ;; # sc4/2k, commerce production
       209.185.142.1 )       P4PORT=cryolite  ;; # congo
       213.216.144.1 )       P4PORT=erythrite ;; # uk/exodus shopping
 
-      # Intranet
-      209.131.48.1 )        P4PORT=quartz    ;; # internal, near quartz
       209.131.*.1 )         P4PORT=juniper   ;; # intranet
-      * )                   P4PORT=jade      ;; # default
+      * )                   P4PORT=juniper   ;; # default
     esac
 
     # Append default tcp port if missing.
@@ -113,8 +115,8 @@ esac
 case "$shell" in
   *[/-]* )
     shell=`echo "$shell" \
-            | sed -e '/\//s=.*/==' \
-                  -e '/-/s/-[^-]*$//'`
+            | sed -e '/\//s=^.*/==' \
+                  -e '/^-/s/^-//'`
    ;;
 esac
 
