@@ -2,10 +2,10 @@
 exec ${PERL-perl} -Swx $0 ${1+"$@"}
 #!perl
 
-# $Id: whois,v 1.6 2000/09/03 23:32:13 friedman Exp $
+# $Id: whois,v 1.7 2000/12/03 11:17:49 friedman Exp $
 
 my $whois = "jwhois";
-system ("jwhois --version > /dev/null 2>&1");
+system ("{ jwhois --version; } > /dev/null 2>&1");
 if ($? != 0)
   {
     $whois = `run-next -p "$0"`;
