@@ -1,0 +1,4 @@
+#!/bin/sh
+HOME=/home/$USER/etc/www/netscape
+export HOME
+exec netscape ${1+"$@"}
