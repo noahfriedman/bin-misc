@@ -1,0 +1,7 @@
+#!/bin/sh
+owner="$1"; shift
+group="$1"; shift
+mode="$1" ; shift
+
+chown "$owner.$group" ${1+"$@"}
+chmod "$mode" ${1+"$@"}
