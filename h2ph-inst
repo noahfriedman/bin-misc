@@ -1,0 +1,19 @@
+#! /bin/sh
+# $Id$
+
+base=/tools/ns/soft/perl-5.004_04/run/default
+ludeclass=${LUDECLASS-`ludeclass`}
+
+exec_prefix=$base/$ludeclass
+prefix=$base/share
+
+shbindir=$prefix/bin
+bindir=$exec_prefix/bin
+libdir=$exec_prefix/lib/perl5/
+
+H2PH="$bindir/perl $shbindir/h2ph"
+export H2PH
+
+exec "$shbindir/h2ph-all" ${1+"$@"}
+
+# h2ph-inst ends here
