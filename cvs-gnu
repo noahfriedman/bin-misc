@@ -1,11 +1,11 @@
 #! /bin/sh
-# $Id: cvs-gnu,v 1.2 1999/10/20 17:51:24 friedman Exp $
+# $Id: cvs-gnu,v 1.3 2000/04/10 09:12:02 friedman Exp $
 
 # Old repository
 #CVSROOT=:pserver:friedman@cvs.gnu.org:/gd/gnu/cvsroot
 
 # See also http://www.gnu.org/software/devel.html#CVS
-CVSROOT=:pserver:friedman@subversions.gnu.org:/home/cvs
+CVSROOT=:pserver:anoncvs@subversions.gnu.org:/home/cvs
 export CVSROOT
 
 exec ${CVS-cvs} ${1+"$@"}
