@@ -1,11 +1,10 @@
 #! /bin/sh
-# $Id: h2ph-inst,v 1.1 1998/03/19 23:35:18 friedman Exp $
+# $Id: h2ph-inst,v 1.2 1998/03/20 00:43:22 friedman Exp $
 
-depot=/tools/ns/soft
-soft=perl-5.004_04
+depot=/opt/lude/soft
+soft=perl-5.005_03
 
-base_run=$depot/$soft/run/default
-base_src=$depot/$soft/src
+base_run=$depot/$soft/run/private
 ludeclass=${LUDECLASS-`ludeclass`}
 
 exec_prefix=$base_run/$ludeclass
@@ -17,6 +16,6 @@ bindir=$exec_prefix/bin
 H2PH="$bindir/perl $shbindir/h2ph"
 export H2PH
 
-exec "$base_src/misc/h2ph-all" ${1+"$@"}
+exec "$shbindir/h2ph-all" ${1+"$@"}
 
 # h2ph-inst ends here
