@@ -1,0 +1,103 @@
+#!/usr/bin/perl -w
+
+# $Id$
+
+sub qpdecode
+{
+  local $_ = shift;
+  y/+/ /;
+  s/%([\dabcdef]{2})/chr(hex($1))/iego;
+  return $_;
+}
+
+my $re = ("(?:"
+          . join ("|",
+                  ('/(?:'
+                   . join ("|",
+                           'default',
+                           'find',
+                           'q',
+                           'query(?:|_..)',
+                           'redirect',
+                           '[^/]*results?',
+                           '[^/]*search',
+                           'buscador',
+                          )
+                   . ')'
+                   . ('(?:'
+                     . join ("|",
+                             '\.a[ds]p',
+                             '\.cgi',
+                             '\.dll',
+                             '\.fcg',
+                             '\.p?html?',
+                             '\.gw',
+                             '\.jsp',
+                             '\.php3?',
+                             '\.pl',
+                             '\.psp',
+                             '\.tmpl',
+                            )
+                     . ')')
+                  ),
+                  "/spbasic\.htm",                     # MSN
+                  "/cat\.adp",                         # aolsearch.aol.com; others?
+                  "/crawler",                          # metacrawler
+                  "/setup\.asp",                       # lycos
+                  "/google\.tmpl",                     # netscape
+                  "/pursuit",                          # lycos
+                  "/search/web",                       # altavista
+                  "/AskJeeves\.asp",                   # ask jeeves
+                  "/DirectHitWeb\.fcg",                # directhit.com
+                  "/altavista\.php3",                  # many domains
+                  '/director\.asp',                    # hotbot
+                  '/gt\.dll',                          # altavista
+
+                  "/(?:metaAnswer|moreResults)\.asp",  # ask.com
+                  "/search/fast/meta",                 # brightgate.com
+
+                  '/search/index\.cgi',                # cadshack.com, others
+
+                  '\.lycos\.com/.*',
+                  '\.mamma\.com/.*',
+                  '\.overture\.com/.*',
+                  '\.searchalot\.com/.*',
+
+                  '\.google\.com/(?:groups|images)',
+
+                  '\.netscape.com/netscape',
+                  '/goto.com/d/search/.*',
+                  '/goto.earthlink.net/d/search/p/earthlink/.*',
+                  'naver.com/search.naver',
+                  'supereva.it/cgi-bin/gsearch.chm',
+                  'c4.com/return.html',
+                  'dotzup.com/h.asp',
+                  'ilor.com/searchilor.lor',
+                  'teoma.com/gs',
+                 )
+          . ')\?(?:|.*&)'
+          . ('(?:'
+             . join ("|",
+                     # Do not sort this.
+                     'query(?:|terms?)',
+                     'search(?:|for|text)',
+                     'qr?',
+                     'p',
+                     'as_q',
+                     'mt',
+                     'key(?:|words?)',
+                     'general',
+                     'terms?',
+                     'ask',
+                     'palabra', # what language is this? used by buscador.com
+                     'words',
+                     's',
+                     'pa',
+                     'x')
+             . ')')
+          . '=([^&"]+)');
+
+while (<>)
+  {
+    print qpdecode ($1), "\n" if /$re/io;
+  }
