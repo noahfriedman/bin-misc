@@ -1,0 +1,81 @@
+#! /bin/sh
+# fcal --- front end for gcal
+
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 1997-12-29
+# Public domain
+
+# $Id$
+
+# Commentary:
+# May require gcal 2.40 or greater.
+# Code:
+
+# Don't include $HOME in this path; that is implicit
+GCAL_USR_DATADIR=${GCAL_USR_DATADIR-lib/calendars}
+export GCAL_USR_DATADIR
+
+cals=personal
+personal_cal=${FCAL_PERSONAL-calendar}
+
+while : ; do
+  case $# in 0) break ;; esac
+  case "$1" in
+    -a | --all | --a* )
+      cals=all
+      shift
+     ;;
+    -g | --global | --g* )
+      cals=global
+      shift
+     ;;
+    -p | --personal | --private | --p* )
+      cals=personal
+      shift
+     ;;
+    -- )
+      shift
+      break
+     ;;
+    * )
+      break
+     ;;
+  esac
+done
+
+set fnord \
+  --alternative-format \
+  --date-format='%y_%B_%1%d%2_(%W)' \
+  --grouping-text='~' \
+  --include-week-number \
+  --highlighting=no \
+  --suppress-calendar \
+  \
+  --list-mode \
+  --include-today \
+  \
+  --exclude-fixed-dates-list-title \
+  --include-consecutive-number \
+  --leap-day=february \
+  --list-of-fixed-dates=short \
+  --omit-multiple-date-part \
+  \
+  ${1+"$@"}
+shift
+
+case "$cals" in
+  all | personal )
+    gcal \
+      --period-of-fixed-dates=3+ \
+      --resource-file=$personal_cal \
+      ${1+"$@"}
+   ;;
+esac
+
+case "$cals" in
+  all | global )
+    gcal ${1+"$@"}
+   ;;
+esac
+
+# fcal ends here
