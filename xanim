@@ -1,0 +1,4 @@
+#!/bin/sh
+# $Id$
+
+exec run-next $0 +Av100 +Zpe ${1+"$@"}
