@@ -2,11 +2,13 @@
 # Run GNU ed with `-G' (backward compatibility option), or traditional ed
 # with no additional options.
 
-# $Id: ed,v 1.1 1996/03/05 22:02:42 friedman Exp $
+# $Id: ed,v 1.2 2000/08/30 06:21:13 friedman Exp $
 
 ed=`run-next -p $0`
 
-if $ed --version > /dev/null 2>&1; then
+# If this is gnu ed, it will still only print the version number.
+# If this is not gnu ed, it will complain about the -G param.
+if $ed -G --version > /dev/null 2>&1; then
   exec $ed -G ${1+"$@"}
 else
   exec $ed ${1+"$@"}
