@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# $Id$
+
+for table in ${1+"$@"}; do
+  case $table in
+    *.frm | *.MYI | *.MYD ) table=`echo "$table" | sed -e 's/\.???$'` ;;
+  esac
+
+  TMPDIR=`dirname "$table"`
+  export TMPDIR
+
+  myisamchk --unpack "$table"
+done
