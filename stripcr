@@ -1,19 +1,36 @@
-#! /bin/sh
+#!/bin/sh
+exec ${PERL-perl} -wSx $0 ${1+"$@"}
+#!perl
+
 # $Id$
 
 # TODO: make numbered backup files of original.
 
-progname=`echo "$0" | sed -e 's/[^\/]*\///g'`
+use Symbol;
 
-tmpfile=/tmp/$progname$$
+sub main
+{
+  my $file;
+  my $fh = gensym;
+  foreach $file (@ARGV)
+    {
+      print $file, "\n";
+      open ($fh, "+<" . $file) || die "open: $file: $!";
+      my @statinfo = stat $fh;
+      my $buf = "";
+      sysread ($fh, $buf, $statinfo[7]);
+      $buf =~ s/\r$//mgo;
+      seek $fh, 0, 0;
+      truncate $fh, 0;
+      syswrite ($fh, $buf, $statinfo[7]);
+      close ($fh);
+      utime $statinfo[8], $statinfo[9], $file;
+    }
+}
 
-set -e
-for f in ${1+"$@"}; do
-  echo "$f"
-  perl -pe 's/\r$//' "$f" > "$tmpfile"
-  cat "$tmpfile" > "$f"
-done
+main ();
 
-rm -f "$tmpfile"
-
-# eof
+# local variables:
+# mode: perl
+# eval: (auto-fill-mode 1)
+# end:
