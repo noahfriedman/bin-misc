@@ -1,7 +1,7 @@
 #! /bin/sh
-# $Id$
+# $Id: cvs-gnu,v 1.1 1999/10/20 17:50:28 friedman Exp $
 
-CVSROOT=:pserver:friedman@melange.gnu.org:/gd/gnu/cvsroot
+CVSROOT=:pserver:friedman@cvs.gnu.org:/gd/gnu/cvsroot
 export CVSROOT
 
 exec ${CVS-cvs} ${1+"$@"}
