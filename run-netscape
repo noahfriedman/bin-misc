@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: run-netscape,v 1.6 1999/05/25 04:41:35 friedman Exp $
+# $Id: run-netscape,v 1.7 1999/10/06 09:24:49 friedman Exp $
 
 case "$1" in
   -* ) ;;
@@ -34,7 +34,7 @@ HOME=$HOME/etc/www/netscape
 export HOME
 
 prefs=$HOME/.netscape/preferences.js
-if ls -d $HOME/.netscape/lock 2> /dev/null; then
+if ls -d $HOME/.netscape/lock > /dev/null 2>&1; then
   :
 elif [ -f "${prefs}.append" ] && [ -f "$prefs" ]; then
   cat "${prefs}.append" >> "$prefs"
