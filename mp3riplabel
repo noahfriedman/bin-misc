@@ -1,5 +1,5 @@
-#! /bin/sh
-# $Id: mp3riplabel,v 1.8 2000/12/10 08:45:37 friedman Exp $
+#! /bin/bash
+# $Id: mp3riplabel,v 1.9 2001/01/02 13:57:03 friedman Exp $
 
 file-template ()
 {
@@ -51,19 +51,29 @@ filter ()
 
 label ()
 {
+  track="$1"
   file=`file-template "$1"`
   title="$2"
   comment="${3-$defcomment}"
 
   touch -r "$file" .stamp
 
-  mp3info -W "$file"
-  mp3info -t "$title" \
-          -l "$album" \
-          -a "$author" \
-          -c "$comment" \
-          -y "$year" \
-          -g "$genre" \
+  #mp3info -W "$file"
+  #mp3info -t "$title" \
+  #        -l "$album" \
+  #        -a "$author" \
+  #        -c "$comment" \
+  #        -y "$year" \
+  #        -g "$genre" \
+  #  "$file"
+
+  id3tag  --artist  "$author"  \
+          --album   "$album"   \
+          --track   "$track"   \
+          --song    "$title"   \
+          --comment "$comment" \
+          --year    "$year"    \
+          --genre   "$genre"   \
     "$file"
 
   touch -r .stamp "$file"
