@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# $Id$
+# $Id: accesslog-queryterms,v 1.1 2001/12/15 15:24:51 friedman Exp $
 
 sub qpdecode
 {
@@ -52,6 +52,7 @@ my $re = ("(?:"
                   "/altavista\.php3",                  # many domains
                   '/director\.asp',                    # hotbot
                   '/gt\.dll',                          # altavista
+                  "/search",                           # google.ca, others
 
                   "/(?:metaAnswer|moreResults)\.asp",  # ask.com
                   "/search/fast/meta",                 # brightgate.com

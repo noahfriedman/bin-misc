@@ -2,7 +2,7 @@
 exec ${PERL-perl} -Swx $0 ${1+"$@"}
 #!perl
 
-# $Id: whois,v 1.8 2000/12/19 17:54:39 friedman Exp $
+# $Id: whois,v 1.9 2002/04/01 08:02:14 friedman Exp $
 
 my $whois = "jwhois";
 system ("{ jwhois --version; } > /dev/null 2>&1");
@@ -21,6 +21,9 @@ my @s
   = (# NSI/Verisign (whois.networksolutions.com)
      "The Data in Network Solutions.*abide by this policy.\n+",
      "The Data in the VeriSign Registrar.*abide by this policy.\n+",
+
+     #opensrs
+     "The Data in the Tucows Registrar WHOIS.*DOMAIN AVAILABILITY.\n+",
 
      "The ARIN Registration Services Host.*NIPRNET Information.\n+",
 
