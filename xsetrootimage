@@ -1,0 +1,5 @@
+#!/bin/sh
+# $Id$
+
+geom=`xrdb-symbol-value WIDTH`x`xrdb-symbol-value HEIGHT`
+exec xv -geometry "$geom" -root -rmode 5 -quit ${1+"$@"}
