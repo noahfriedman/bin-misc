@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id$
+# $Id: mp3riplabel,v 1.1 1999/10/03 07:13:56 friedman Exp $
 
 init ()
 {
@@ -55,8 +55,8 @@ rename ()
   new=`echo "$title $comment" \
          | sed -e "s/  / /g" \
                -e "s/ $//" \
-               -e "y/'[(_ /-----/" \
-               -e "s/[]):]//g"`
+               -e "y/[(_ /----/" \
+               -e "s/[]):']//g"`
   new="$file_author:$file_album-$1:$new.mp3"
   mv -v "$old" "$new"
 }
