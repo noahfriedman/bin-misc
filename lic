@@ -1,0 +1,9 @@
+#!/bin/sh
+# $Id$
+
+ls -la ${1+"$@"} \
+  | perl -ane '($F[4] = reverse $F[4]) =~ s/(\d{3})/$1,/go;
+               $F[4] = reverse $F[4];
+               print "@F\n";
+              ' \
+  | fmtcols -Ni '^total'
