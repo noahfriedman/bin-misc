@@ -1,5 +1,5 @@
-#!/bin/sh -x
-# $Id$
+#! /bin/sh
+# $Id: run-netscape,v 1.2 1997/06/10 10:14:36 friedman Exp $
 
 ver="$1"; shift
 nam="$1"; shift

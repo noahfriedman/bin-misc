@@ -1,4 +1,3 @@
 #!/bin/sh
-HOME=/home/$USER/etc/www/netscape
-export HOME
-exec endoscope ${1+"$@"}
+#!/bin/sh
+exec run-netscape 3 endoscope ${1+"$@"}

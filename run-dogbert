@@ -1,4 +1,2 @@
 #!/bin/sh
-HOME=/home/$USER/etc/www/netscape/dogbert
-export HOME
-exec communicator ${1+"$@"}
+exec run-netscape 4 dogbert ${1+"$@"}
