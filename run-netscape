@@ -1,36 +1,37 @@
 #! /bin/sh
-# $Id: run-netscape,v 1.3 1997/06/10 10:18:26 friedman Exp $
+# $Id: run-netscape,v 1.4 1997/09/08 03:59:54 friedman Exp $
 
-ver="$1"; shift
-nam="$1"; shift
-
-case "$ver" in
-  '' | any ) : ;;
-  *.* )
-    MOZVERSION="$ver"
-    export MOZVERSION
-   ;;
+case "$1" in
+  -* ) ;;
   * )
-    MOZMAJORVERSION="$ver"
-    export MOZMAJORVERSION
-   ;;
-esac
+    ver="$1"; shift
+    nam="$1"; shift
 
-case "$nam" in
-  '' | normal ) : ;;
-  * )
-    MOZNAME="$nam"
-    MOZPROG="$nam"
-    export MOZNAME MOZPROG
+    case "$ver" in
+      '' | any ) : ;;
+      *.* )
+        MOZVERSION="$ver"
+        export MOZVERSION
+       ;;
+      * )
+        MOZMAJORVERSION="$ver"
+        export MOZMAJORVERSION
+       ;;
+    esac
+
+    case "$nam" in
+      '' | normal ) : ;;
+      * )
+        MOZNAME="$nam"
+        MOZPROG="$nam"
+        export MOZNAME MOZPROG
+       ;;
+    esac
    ;;
 esac
 
 HOME=$HOME/etc/www/netscape
 export HOME
-
-# case "$ver" in
-#   4* ) HOME="$HOME/dogbert" ;;
-# esac
 
 exec netscape-fe ${1+"$@"}
 
