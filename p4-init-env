@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: p4-init-env,v 1.1 1999/10/17 06:42:15 friedman Exp $
+# $Id: p4-init-env,v 1.2 1999/10/30 07:50:26 friedman Exp $
 
 # Commentary:
 
@@ -16,13 +16,15 @@
 uid=`whoami`
 user=${USER-${LOGNAME-$uid}}
 hostname=${HOSTNAME-`hostname`}
+hostname=`echo "$hostname" | sed 's/\..*//'`
+shell=$SHELL
 
 # Defaults which can be overridden below
 case "$1" in
   '' ) P4USER=$user ;;
   -* )
     P4USER=$user
-    SHELL=`echo "x$1" | sed -e 's/^x-//'`
+    shell=`echo "x$1" | sed -e 's/^x-//'`
     shift
    ;;
   *  )
@@ -30,7 +32,11 @@ case "$1" in
     shift
    ;;
 esac
-P4CLIENT=$uid.$hostname
+
+case "$hostname" in
+  trabanten-schwein ) P4CLIENT=$uid.laptop ;;
+  * )                 P4CLIENT=$uid.inkdev ;;
+esac
 
 # Determine subnet based on default route gateway
 subnet=`netstat -rn \
@@ -53,10 +59,7 @@ case "$subnet" in
   205.188.183.62 ) P4PORT=sapphire ;;   # va3/4
   62.172.199.1 )   P4PORT=beryl    ;;   # UK1
   202.212.5.1 )    P4PORT=pearl    ;;   # JP1
-  209.131.*.1 )                         # intranet
-    P4PORT=inkdev
-    P4CLIENT=$uid.inkdev
-   ;;
+  209.131.*.1 )    P4PORT=inkdev   ;;   # intranet
   * )              P4PORT=j4000    ;;   # default
 esac
 
@@ -67,14 +70,24 @@ case "$P4PORT" in
 esac
 
 # Emit the right syntax based on login shell.
-case "$SHELL" in
-  csh | tcsh | */csh | */tcsh )
+case "$shell" in
+  *[/-]* )
+    shell=`echo "$shell" \
+            | sed -e '/\//s=.*/==' \
+                  -e '/-/s/-[^-]*$//'`
+   ;;
+esac
+
+case "$shell" in
+  csh | tcsh )
     echo "setenv P4PORT   $P4PORT;"
     echo "setenv P4USER   $P4USER;"
     echo "setenv P4CLIENT $P4CLIENT;"
    ;;
-  emacs | emacs-* | */emacs | */emacs-* )
-    echo "(progn"
+  emacs | scsh )
+    progn="progn"
+    case "$shell" in scsh ) progn="begin" ;; esac
+    echo "($progn"
     echo "  (setenv \"P4PORT\"   \"$P4PORT\")"
     echo "  (setenv \"P4USER\"   \"$P4USER\")"
     echo "  (setenv \"P4CLIENT\" \"$P4CLIENT\"))"
@@ -83,7 +96,12 @@ case "$SHELL" in
     echo "P4PORT=$P4PORT;"
     echo "P4USER=$P4USER;"
     echo "P4CLIENT=$P4CLIENT;"
-    echo "export P4PORT P4USER P4CLIENT;"
+    case "$shell" in
+      es | rc ) : ;;
+      * )
+        echo "export P4PORT P4USER P4CLIENT;"
+       ;;
+    esac
   ;;
 esac
 
