@@ -1,0 +1,38 @@
+#! /bin/sh
+# test-cgi --- friendly front end for feeding test input to CGI programs
+# Author: Noah Friedman <friedman@prep.ai.mit.edu>
+# Created: 1995-08-08
+# Public domain
+
+# $Id$
+
+progname=`echo "$0" | sed -e 's/[^\/]*\///g'`
+default_input=',cgi-test-data'
+
+usage="Usage: $progname [cgi-script] {input-file}
+
+If input-file is not specified, it defaults to \`$default_input'."
+
+case $# in
+  1 )
+    cgi_script="$1"
+    input="$default_input"
+   ;;
+  2 )
+    cgi_script="$1"
+    input="$2"
+   ;;
+  * )
+    echo "$usage" 1>&2
+    exit 1
+   ;;
+esac
+
+set fnord `wc -c $input` || exit 1
+
+CONTENT_LENGTH="$2"
+export CONTENT_LENGTH
+
+exec "$cgi_script" < "$input"
+
+# test-cgi ends here
