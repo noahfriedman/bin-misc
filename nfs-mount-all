@@ -1,0 +1,4 @@
+#!/bin/sh
+# $Id$
+
+awk '$3 == "nfs" { print "mount", $2 }' /etc/fstab | sh -x
