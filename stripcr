@@ -1,0 +1,19 @@
+#! /bin/sh
+# $Id$
+
+# TODO: make numbered backup files of original.
+
+progname=`echo "$0" | sed -e 's/[^\/]*\///g'`
+
+tmpfile=/tmp/$progname$$
+
+set -e
+for f in ${1+"$@"}; do
+  echo "$f"
+  perl -pe 's/\r$//' "$f" > "$tmpfile"
+  cat "$tmpfile" > "$f"
+done
+
+rm -f "$tmpfile"
+
+# eof
