@@ -1,7 +1,0 @@
-#!/bin/sh
-# $Id$
-
-P4EDITOR=gnuedit
-export P4EDITOR
-
-exec p4 ${1+"$@"}
