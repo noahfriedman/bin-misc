@@ -1,0 +1,5 @@
+#!/usr/bin/env perl
+# $Id$
+
+use Socket;
+print map { inet_ntoa ($_) . "\n" } (sort map { chop; inet_aton ($_) } <>);
