@@ -1,0 +1,4 @@
+#!/bin/sh
+# $Id$
+
+exec with -N vncviewer -encodings 'copyrect hextile corre rre' ${1+"$@"}
