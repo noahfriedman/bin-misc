@@ -1,0 +1,2 @@
+#!/bin/sh
+telnet flode.nvg.unit.no 17
