@@ -1,0 +1,74 @@
+#!/usr/local/bin/perl
+
+# Written by Charles Sandel <sandel@cli.com>
+
+# Syntax:  mksymlinktree ditch_string [ link_root ]
+#
+# Take a list of full pathnames on stdin and make a symlink
+# tree to those names starting in the current directory, or in link_root
+# if the argument is provided.
+# The full pathname "ditch_string" must be a pathname
+# component of the input to throw away.  Often, probably always,
+# this will be where "find" starts if using "find" to generate
+# the pathnames for stdin.
+# Can be used at the end of a find pipe, e.g.:
+#
+# find /usr/local/src -print | \
+#	mksymlinktree /usr/local/src /usr/local/obj/sparc/solaris2
+
+sub mkdirp {
+	$name = @_[0];
+	$num = @_[1];
+
+	(@dirs) = split(/\//, $name);
+
+	for ( $n=0, $d = $dirs[0]; $n < $num; ) {
+		if ( ! -e $d ) {
+			mkdir $d, 0777;
+			}
+		$d = join('/', $d, $dirs[++$n]);
+		}
+	}
+
+if ( $#ARGV < 0 ) {
+	print STDERR "Usage: mksymlinktree ditch_string [ link_root ]\n";
+	exit 1;
+	}
+
+$ditch = $ARGV[0];
+$linkroot = ".";
+
+if ( $#ARGV > 0 ) {
+	$linkroot = $ARGV[1];
+	}
+
+if ( ! -d $linkroot ) {
+	print STDERR "Not a directory: $linkroot\n";
+	exit 1;
+	}
+
+chdir($linkroot);
+
+while ( <STDIN> ) {
+	chop;
+	$fullpath = $_;
+	($filler, $newname) = split(/$ditch/, $fullpath);
+	(@dirs) = split(/\//, $newname);
+	if ( $newname eq $fullpath || $filler eq $fullpath ) {
+		print STDERR "Ditch-string does not occur in $fullpath.  Can't make dir/link.\n";
+		next;
+		}
+	$ndirs = $#dirs + 1;
+	if ( ! -e $fullpath ) {
+		print STDERR "Cannot link to $fullpath: No such file or directory.\n";
+		next;
+		}
+	if ( -d $fullpath ) {
+		print STDERR "Creating $newname\n";
+		mkdirp($newname, $ndirs);
+		}
+	else {
+		mkdirp($newname, $ndirs-1);
+		symlink($fullpath, $newname);
+		}
+	}
