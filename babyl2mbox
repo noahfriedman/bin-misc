@@ -1,10 +1,10 @@
 #!/usr/local/bin/perl --					# -*-Perl-*-
 eval "exec /usr/local/bin/perl -S $0 $*"
-    if $running_under_some_shell;
+    if 0;
 
 # Append messages or Usenet articles to a Babyl or UNIX mail file.
-# Copyright (C) 1991, 1992 Free Software Foundation, Inc.
-# Francois Pinard <pinard@iro.umontreal.ca>, March 1992.
+# Copyright (C) 1991, 1992, 1994 Free Software Foundation, Inc.
+# François Pinard <pinard@iro.umontreal.ca>, March 1992.
 #
 # March 1989: tried an sh script to convert between message formats.
 # August 1991: Perl version to convert rn, UNIX mail and Babyl to Babyl.
@@ -12,7 +12,7 @@ eval "exec /usr/local/bin/perl -S $0 $*"
 # July 1994: added many inputs to a single output, added summary listing.
 
 $usage = "\
-Usage: $0 [ OPTION ] ... INPUT [...]
+Usage: $0 [ OPTION ] ... [INPUT] ...
   -b OUTPUT  convert all INPUT files into Babyl on OUTPUT
   -u OUTPUT  convert all INPUT files into UNIX format on OUTPUT
   -s         produce one summary line per input message
@@ -26,7 +26,7 @@ Options -b and -u cannot be used simultaneously.\n";
 # untolerable slowness.
 
 # BUG: A missing `*** EOOH ***' line fools babyl in deleting the whole
-# message.  Chris Moore <moore@src.bae.co.uk>, 92-07-21.
+# message.  Chris Moore <moore@src.bae.co.uk>, 1992-07-21.
 
 $NOWHERE_STATE = 0;
 $HEADER_STATE = 1;
@@ -41,7 +41,7 @@ $SKIP_BABYL_STATE = 3;
 ;# Modified March 1990, Feb 1991 to properly handle timezones
 ;#  $Id: ctime.pl,v 1.8 91/02/04 18:28:12 hakanson Exp $
 ;#   Marion Hakanson (hakanson@cse.ogi.edu)
-;#   Oregon Graduate Institute of Science and Technology
+#   Oregon Graduate Institute of Science and Technology
 ;#
 ;# usage:
 ;#
@@ -86,7 +86,20 @@ sub ctime {
 1;
 #----------------------------------------------------------------------<
 
-$TODAY = &ctime(time);
+$month{"Jan"} = 1;
+$month{"Feb"} = 2;
+$month{"Mar"} = 3;
+$month{"Apr"} = 4;
+$month{"May"} = 5;
+$month{"Jun"} = 6;
+$month{"Jul"} = 7;
+$month{"Aug"} = 8;
+$month{"Sep"} = 9;
+$month{"Oct"} = 10;
+$month{"Nov"} = 11;
+$month{"Dec"} = 12;
+
+$TODAY = &ctime (time);
 chop $TODAY;
 
 while ($ARGV[0] =~ /^-/)
@@ -294,17 +307,58 @@ sub start_body
     }
     if ($summary)
     {
-	$from = "unknown";
-	$date = "unknown";
+	$from = "-----";
+	$date = "-- --- --";
 	$subject = "(none)";
 	foreach $line (@header)
 	{
 	    if ($line =~ /^From:[ \t]*(.*)/i)
 	    {
-		$from = $1;
-		$from = $1 if $from =~ /<(.+)>/;
-		$from =~ s/ *\(.*\) *//;
-		$from =~ s/ *".*" *//;
+		if ($line =~ /^From:[ \t]*([^<]*)<(.*)>/i)
+		{
+		    $name = $1;
+		    $from = $2;
+		}
+		elsif ($line =~ /^From:[ \t]*([^\(]*)\((.*)\)/i)
+		{
+		    $from = $1;
+		    $name = $2;
+		}
+		elsif ($line =~ /^From:[ \t]*(.*)/i)
+		{
+		    $from = $1;
+		    $name = "";
+		}
+		$name = $1 if $name =~ /^ *"(.*)" *$/;
+		$name =~ s/^ +//;
+		$name =~ s/ +$//;
+		if ($name)
+		{
+		    while ($name =~ /=\?ISO-8859-1\?Q\?([^?]*)\?=/i)
+		    {
+			$before = $`;
+			$after = $';
+			$string = $1;
+			$string =~ s/_/ /g;
+			while ($string =~ /=([0-9A-F][0-9A-F])/i)
+			{
+			    $string = $` . pack ("H2", $1) . $';
+			}
+			$name = $before . $string . $after;
+		    }
+		    $from = $name;
+		}
+		else
+		{
+		    $from =~ s/^ +//;
+		    $from =~ s/ +$//;
+		}
+		$from =~ s/  +/ /g;
+	    }
+	    elsif ($line
+		   =~ /^Date:[ \t]*((19|20)[0-9][0-9]-[01][0-9]-[0-3][0-9])/i)
+	    {
+		$date = $1;
 	    }
 	    elsif ($line =~ /^Date:[ \t]*(.*)/i)
 	    {
@@ -312,16 +366,29 @@ sub start_body
 		$date =~ s/[A-Z][a-z][a-z], //;
 		$date =~ s/^([1-9]) /0\1 /;
 		$date =~ s/199([0-9])/9\1/;
-		$date =~ s/ +[0-2]?[0-9]:.*//;	
+		$date =~ s/ +[0-2]?[0-9]:.*//;
+		if ($date =~ /^$DATE $MONTH $YEAR$/o)
+		{
+		    ($date, $month, $year) = split (' ', $date);
+		    $date = sprintf ("%4d-%.2d-%.2d",
+				     1900 + $year, $month{$month}, $date);
+		}
+		else
+		{
+		    $date = "....-..-..";
+		}
 	    }
 	    elsif ($line =~ /^Subject:[ \t]*(.*)/i)
 	    {
 		$subject = $1;
+		$subject =~ s/  +/ /g;
 	    }
 	}
-	$line = sprintf ("%2d. %s <%s> %s",
-			 $counter + 1, $date, $from, $subject);
-	print substr ($line, 0, 79), "\n";
+	$line = substr (sprintf ("%2d. %s %s: %s",
+				 $counter + 1, $date, $from, $subject),
+			0, 79);
+	$line =~ s/ +$//;
+	print $line, "\n";
     }
     $state = $BODY_STATE;
     $blanks = 0;
