@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: lic,v 1.1 2002/07/22 03:51:11 friedman Exp $
+# $Id: lic,v 1.2 2002/07/22 04:00:58 friedman Exp $
 
 ls -la ${1+"$@"} \
   | perl -ane '$x = reverse $F[4];
@@ -7,4 +7,4 @@ ls -la ${1+"$@"} \
                $F[4] = reverse $x;
                print "@F\n";
               ' \
-  | fmtcols -Ni '^total'
+  | fmtcols --numeric-regexp '[\d:.]+' -Nwi '^total'
