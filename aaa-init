@@ -1,9 +1,12 @@
 #!/usr/local/bin/es
 # aaa-init --- program Ann Arbor Ambassador power-on string
+
+# Copyright (C) 1993 Noah S. Friedman
+
 # Author: Noah Friedman <friedman@prep.ai.mit.edu>
 # Created: 1993-06-17
 
-# $Id: aaa-init,v 1.5 1995/06/05 18:56:58 friedman Exp $
+# $Id: aaa-init,v 1.6 1996/03/03 17:33:49 friedman Exp $
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
