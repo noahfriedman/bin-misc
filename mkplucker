@@ -1,0 +1,21 @@
+#!/bin/sh
+# $Id$
+
+title=$1
+output=$PWD/$title
+url=$2
+
+shift
+shift
+
+# --stayondomain \
+exec plucker-build \
+    -v \
+    --zlib-compression \
+    --bpp 8 \
+    --maxdepth 1024 \
+    --stayonhost \
+    --doc-file "$output" \
+    --doc-name "$title" \
+    --home-url "$url" \
+    ${1+"$@"}
