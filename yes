@@ -1,0 +1,12 @@
+#!/bin/sh
+# $Id$
+
+# I hate when I accidentally type "yes" in response to a query I expect to
+# get from emacs before exiting, but forget that I didn't enable that query.
+# On a slow connection, yes' spew is painful.
+
+if [ -t 1 ] || ! [ -t 0 ]; then
+  echo no
+else
+  exec run-next "$0" ${1+"$@"}
+fi
