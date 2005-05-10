@@ -1,0 +1,5 @@
+#!/bin/sh
+# $Id$
+# Stupid hack for `launchy' firefox plugin which does not split args.
+
+eval exec "$*" >> $HOME/.xinitrc.log 2>&1 &
