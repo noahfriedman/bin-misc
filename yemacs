@@ -1,15 +1,26 @@
 #!/bin/bash
-# $Id: yemacs,v 1.6 2004/12/07 03:31:51 friedman Exp $
+# $Id: yemacs,v 1.7 2004/12/15 02:09:02 friedman Exp $
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
 #ulimit -Sd 65535
 #ulimit -Sd 262144
 
-builddirs='
-   /export/src/emacs/build/current/src
-   /fs/u3/sys/emacs-21-build/current/src
-'
+case `basename $0` in
+  yemacs )
+    builddirs='
+       /export/src/emacs/build/current/src
+       /fs/u3/sys/emacs-21-build/current/src
+    '
+   ;;
+
+  mtemacs )
+    builddirs='
+       /export/src/emacs/build/multi-tty/current/src
+       /fs/u3/sys/emacs-21-build/multi-tty/current/src
+    '
+   ;;
+esac
 
 progname=emacs
 case $1 in
