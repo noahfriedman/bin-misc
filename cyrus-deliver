@@ -4,7 +4,7 @@
 # Created: 2005-05-12
 # Public domain
 
-# $Id$
+# $Id: cyrus-deliver,v 1.1 2005/05/12 19:51:29 friedman Exp $
 
 # Commentary:
 
@@ -18,18 +18,23 @@
 libdir=/usr/lib/cyrus-imapd
 USER=${SUDO_USER-${USER-$LOGNAME}}
 
-if [ -g $libdir/deliver-wrapper ]; then
-  case $# in
-    0 ) set "user.$USER"    ;;
-    1 ) set "user.$USER.$1" ;;
-  esac
+# Remove envelope from incoming message.
+# Cyrus' lmtpd bombs if it sees a leading "From ".
+sed -e '1{/^From /d;}' \
+ | {
+     if [ -g $libdir/deliver-wrapper ]; then
+       case $# in
+         0 ) set "user.$USER"    ;;
+         1 ) set "user.$USER.$1" ;;
+       esac
 
-  exec $libdir/deliver-wrapper "$1"
-else
-  case $# in
-    0 ) exec $libdir/deliver -a "$USER" "$USER"         ;;
-    * ) exec $libdir/deliver -a "$USER" -m "$1" "$USER" ;;
-  esac
-fi
+       $libdir/deliver-wrapper "$1"
+     else
+       case $# in
+         0 ) $libdir/deliver -a "$USER" "$USER"         ;;
+         * ) $libdir/deliver -a "$USER" -m "$1" "$USER" ;;
+       esac
+     fi
+   }
 
 # eof
