@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: yemacs,v 1.7 2004/12/15 02:09:02 friedman Exp $
+# $Id: yemacs,v 1.8 2005/05/12 23:02:39 friedman Exp $
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
@@ -8,17 +8,19 @@
 
 case `basename $0` in
   yemacs )
-    builddirs='
+    builddirs="
+       $HOME/src/emacs/build/current/src
        /export/src/emacs/build/current/src
        /fs/u3/sys/emacs-21-build/current/src
-    '
+    "
    ;;
 
   mtemacs )
-    builddirs='
+    builddirs="
+       $HOME/src/emacs/build/multi-tty/current/src
        /export/src/emacs/build/multi-tty/current/src
        /fs/u3/sys/emacs-21-build/multi-tty/current/src
-    '
+    "
    ;;
 esac
 
