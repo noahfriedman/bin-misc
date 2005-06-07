@@ -1,0 +1,10 @@
+#!/bin/sh
+# $Id$
+
+exec run-next "$0" \
+    -quiet \
+    -really-quiet \
+    -nolirc \
+    -nojoystick \
+    -xy 2 \
+    "$@" > /dev/null
