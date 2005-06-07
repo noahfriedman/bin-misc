@@ -1,5 +1,9 @@
 #!/bin/sh
-# $Id: p4-init-env,v 1.13 2003/01/13 11:22:04 friedman Exp $
+# p4-init-env --- guess values for P4* env variables
+# Author: Noah Friedman <friedman@splode.com>
+# Public domain
+
+# $Id: p4-init-env,v 1.14 2003/02/28 09:16:50 friedman Exp $
 
 # Commentary:
 
@@ -72,41 +76,8 @@ case "$overridep:${P4PORT+set}" in
                       -e p -e q`
 
     case "$subnet" in
-      192.168.1.* )         P4PORT=localhost ;; # prv.splode.com proxy
-
-      # Production search clusters
-      209.1.12.1 )          P4PORT=onyx      ;; # sc1-2
-      209.185.141.1 )       P4PORT=juniper   ;; # sc3
-      64.75.36.1 )          P4PORT=hematite  ;; # sc4/2k, search
-
-      66.196.9[789].1 )     P4PORT=ruby      ;;
-      205.188.182.253 \
-      | 205.188.183.6[12] \
-      | 205.188.184.254 )   P4PORT=sapphire  ;; # va3/4
-      205.188.183.94 )      P4PORT=topaz     ;; # va5 admin
-      205.188.183.254 )     P4PORT=topaz     ;; # va5 search nodes
-
-      62.172.199.1 )        P4PORT=beryl     ;; # uk1
-      213.216.143.1 )       P4PORT=ibex      ;; # uk2
-
-      216.35.11[678].1 )    P4PORT=feldspar  ;; # gigadoc
-      209.185.122.1 )       P4PORT=amber     ;; # mini cluster
-      209.202.174.161 )     P4PORT=cb-admin  ;; # cb2
-      211.169.241.1 )       P4PORT=kyanite   ;; # kr1
-      202.212.5.1 )         P4PORT=pearl     ;; # jp1
-      210.172.228.129 )     P4PORT=lapis     ;; # jp2
-      210.165.10.1 )        P4PORT=woodstone ;; # jp3
-      209.185.143.1 )       P4PORT=juniper   ;; # j4k
-
-      # Commerce nets; obsolete?
-      64.41.217.1 )         P4PORT=diamond   ;; # congo
-      64.75.7.1 )           P4PORT=dilithium ;; # sc4/2k, commerce beta
-      64.75.8.1 )           P4PORT=juniper   ;; # sc4/2k, commerce production
-      209.185.142.1 )       P4PORT=cryolite  ;; # congo
-      213.216.144.1 )       P4PORT=erythrite ;; # uk/exodus shopping
-
-      209.131.*.1 )         P4PORT=juniper   ;; # intranet
-      * )                   P4PORT=juniper   ;; # default
+      192.168.1.* )         P4PORT=localhost ;;
+      * )                   P4PORT=perforce  ;;
     esac
 
     # Append default tcp port if missing.
@@ -165,4 +136,4 @@ case "$shell" in
   ;;
 esac
 
-# p4-init-env ends here.
+# p4-init-env ends here
