@@ -1,9 +1,14 @@
 #!/bin/sh
-# $Id: p4,v 1.7 2002/08/19 02:17:02 friedman Exp $
+
+# p4 wrapper --- search for p4 env variables
+# Author: Noah Friedman <friedman@splode.com>
+# Public domain.
+
+# $Id$
 
 case ":${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
   :set:set:set: ) : ;;
-  * ) eval `p4-init-env -sh` ;;
+  * ) eval `{ p4-init-env -sh; } 2> /dev/null` ;;
 esac
 
 case "${P4CONFIG+set}" in
@@ -14,6 +19,8 @@ case "${P4CONFIG+set}" in
     while [ "$dir" != "NULL" ]; do
       if [ -f "$dir/$P4CONFIG" ]; then
         . "$dir/$P4CONFIG"
+        # Export all P4* variables
+        export `set | sed -e '/^P4/!d' -e 's/=.*//'`
         break
       fi
       dir=`echo "$dir" | sed -e 's/^$/NULL/' -e 's/\/[^\/]*$//'`
@@ -26,9 +33,9 @@ esac
 PWD=`/bin/pwd`
 
 if { p4client -V; } > /dev/null 2>&1 ; then
-  exec p4client ${1+"$@"}
+  exec p4client "$@"
 else
-  exec run-next $0 ${1+"$@"}
+  exec run-next "$0" "$@"
 fi
 
 # eof
