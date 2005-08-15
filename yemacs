@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: yemacs,v 1.8 2005/05/12 23:02:39 friedman Exp $
+# $Id: yemacs,v 1.9 2005/06/01 16:42:49 friedman Exp $
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
@@ -27,6 +27,11 @@ esac
 progname=emacs
 case $1 in
   -login ) progname=-emacs; shift ;;
+  -attach )
+    case $DISPLAY in
+      '' ) exec gnuclient --eval "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
+      *  ) exec gnuclient --eval "(make-frame-on-display \"$DISPLAY\")" ;;
+    esac ;;
 esac
 
 for dir in $builddirs; do
