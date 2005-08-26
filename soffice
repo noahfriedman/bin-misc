@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: soffice,v 1.1 2000/09/17 12:34:51 friedman Exp $
+# $Id: soffice,v 1.2 2003/07/12 19:50:02 friedman Exp $
 
 case "$HOME" in
   /u/$USER | /home/$USER ) HOME=$HOME/etc/misc ;;
@@ -14,12 +14,12 @@ if [ -d $HOME/adabas ]; then
   export DBROOT DBWORK DBCONFIG PATH LD_LIBRARY_PATH
 fi
 
-case "$1" in
+case $1 in
   --run )
     shift
-    exec ${1+"$@"}
+    exec "$@"
    ;;
   * )
-    exec $HOME/.openoffice/soffice ${1+"$@"}
+    exec $HOME/.openoffice/soffice "$@"
    ;;
 esac

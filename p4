@@ -4,7 +4,7 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id$
+# $Id: p4,v 1.9 2005/06/07 23:42:29 friedman Exp $
 
 case ":${P4PORT+set}:${P4USER+set}:${P4CLIENT+set}:" in
   :set:set:set: ) : ;;
@@ -30,7 +30,7 @@ esac
 # Make sure that symlinks are resolved; if this variable is exported, p4
 # will use it.  But note that we don't attempt to export it here if it
 # wasn't already exported.
-PWD=`/bin/pwd`
+#PWD=`/bin/pwd`
 
 if { p4client -V; } > /dev/null 2>&1 ; then
   exec p4client "$@"
