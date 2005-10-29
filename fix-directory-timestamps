@@ -1,11 +1,16 @@
 #!/bin/sh
-# $Id: fix-directory-timestamps,v 1.1 2001/01/13 15:28:58 friedman Exp $
+# $Id$
 
-find "$@" -type d -print \
- | sort -r \
- | while read d; do
-     nfile=`ls -1At "$d" | sed -e '/CVS/d' | head -1`
-     case "$nfile" in
+ignore='CVS RCS {arch} .svn'
+
+find_ign=`for i in $ignore; do echo ! -name $i ; done`
+sed_ign=` for i in $ignore; do echo "/^$i\$/d" ; done`
+
+find ${1+"$@"} $find_ign -type d -print \
+  | sort -r \
+  | while read d; do
+     nfile=`ls -1At "$d" | sed -e "$sed_ign" -e q`
+     case $nfile in
        '' ) : ;;
        * ) touch -r "$d/$nfile" "$d" ;;
      esac
