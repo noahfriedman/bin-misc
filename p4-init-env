@@ -3,7 +3,7 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain
 
-# $Id: p4-init-env,v 1.14 2003/02/28 09:16:50 friedman Exp $
+# $Id: p4-init-env,v 1.15 2005/06/07 23:44:01 friedman Exp $
 
 # Commentary:
 
@@ -44,7 +44,7 @@ opt_user=
 overridep=f
 while : ; do
   case $# in 0) break ;; esac
-  case "$1" in
+  case $1 in
     --override    ) overridep=t ; shift ;;
     --no-override ) overridep=f ; shift ;;
     -*            ) shell=$1    ; shift ;;
@@ -52,36 +52,42 @@ while : ; do
   esac
 done
 
+defconfig=${_def_P4CONFIG-$HOME/.p4.cfg}
+if [ -f "$defconfig" ]; then
+  # This can be used to determine subnet based on default route gateway
+  SUBNET=`netstat -rn \
+           | sed -n -e '/^default/b p' \
+                    -e '/^0\.0\.0\.0/b p' \
+                    -e d \
+                    -e :p \
+                    -e 's/[ 	][ 	]*/ /g' \
+                    -e 's/^[^ ]* //' \
+                    -e 's/ .*//' \
+                    -e p -e q`
+
+  _vars=`set | sed -e '/^P4/!d' -e 's/=.*//'`
+  new=`unset $_vars _vars;
+       . "$defconfig";
+       set | sed -e '/^P4/!d' -e 's/^/_def_/'`
+  eval "$new"
+fi
+
 # Set P4USER only if not already set, or override was specified.
-case "$overridep:${P4USER+set}:$opt_user" in
-  t:*:?* | f::?* )   P4USER=$opt_user ;;
-  t:*:   | f:: )     P4USER=$user     ;;
+case $overridep:${P4USER+set}:$opt_user in
+  t:*:?* | f::?* ) P4USER=$opt_user ;;
+  t:*:   | f:: )   P4USER=${_def_P4USER-$user} ;;
 esac
 
-case "$overridep:${P4CLIENT+set}" in
-  t:* | f: ) P4CLIENT=$uid.$hostname ;;
+case $overridep:${P4CLIENT+set} in
+  t:* | f: ) P4CLIENT=${_def_P4CLIENT-$uid.$hostname} ;;
 esac
 
-case "$overridep:${P4PORT+set}" in
+case $overridep:${P4PORT+set} in
   t:* | f: )
-    # Determine subnet based on default route gateway
-    subnet=`netstat -rn \
-             | sed -n -e '/^default/b p' \
-                      -e '/^0\.0\.0\.0/b p' \
-                      -e d \
-                      -e :p \
-                      -e 's/[ 	][ 	]*/ /g' \
-                      -e 's/^[^ ]* //' \
-                      -e 's/ .*//' \
-                      -e p -e q`
-
-    case "$subnet" in
-      192.168.1.* )         P4PORT=localhost ;;
-      * )                   P4PORT=perforce  ;;
-    esac
+    P4PORT=${_def_P4PORT-perforce}
 
     # Append default tcp port if missing.
-    case "$P4PORT" in
+    case $P4PORT in
       *:* ) : ;;
       * ) P4PORT=$P4PORT:1666 ;;
     esac
@@ -89,7 +95,7 @@ case "$overridep:${P4PORT+set}" in
 esac
 
 # Emit the right syntax based on login shell.
-case "$shell" in
+case $shell in
   *[/-]* )
     shell=`echo "$shell" \
             | sed -e '/\//s=^.*/==' \
@@ -97,7 +103,7 @@ case "$shell" in
    ;;
 esac
 
-case "$shell" in
+case $shell in
   csh | tcsh )
     echo "setenv P4USER   $P4USER;"
     echo "setenv P4PORT   $P4PORT;"
@@ -116,9 +122,9 @@ case "$shell" in
   emacs | rep | sawfish | clisp | scsh | guile )
     progn="progn"
     setenv="setenv"
-    case "$shell" in
-      scsh | guile ) progn="begin"           ;;
-      clisp )        setenv="system::setenv" ;;
+    case $shell in
+      scsh  | guile ) progn="begin"           ;;
+      clisp | gcl   ) setenv="system::setenv" ;;
     esac
     echo "($progn"
     echo "  ($setenv \"P4USER\"   \"$P4USER\")"
@@ -129,7 +135,7 @@ case "$shell" in
     echo "P4USER=$P4USER;"
     echo "P4PORT=$P4PORT;"
     echo "P4CLIENT=$P4CLIENT;"
-    case "$shell" in
+    case $shell in
       es | rc ) : ;;
       * ) echo "export P4USER P4PORT P4CLIENT;" ;;
     esac
