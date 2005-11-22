@@ -1,7 +1,10 @@
 #!/bin/sh
-# $Id$
+# $Id: gp4,v 1.1 2000/03/10 08:37:42 friedman Exp $
 
-P4EDITOR=gnuedit
-export P4EDITOR
+case ${EMACS+set}:$TERM in
+  set:* | *:emacs | *:EMACS )
+    P4EDITOR=gnuedit
+    export P4EDITOR ;;
+esac
 
 exec p4 ${1+"$@"}
