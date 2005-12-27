@@ -1,4 +1,4 @@
 #!/bin/sh
 
-xvattr -a XV_SET_DEFAULTS -v 1 > /dev/null 2>&1
-xvattr -a XV_COLORKEY -v 30
+xvattr -p 62 -a XV_SET_DEFAULTS -v  1 > /dev/null 2>&1
+xvattr -p 62 -a XV_COLORKEY     -v 30
