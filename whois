@@ -1,27 +1,31 @@
-#!/bin/sh
-exec ${PERL-perl} -Swx $0 ${1+"$@"}
-#!perl
+#!/usr/bin/env perl
+# $Id: whois,v 1.11 2003/01/16 11:03:35 friedman Exp $
 
-# $Id: whois,v 1.10 2002/07/03 08:21:18 friedman Exp $
+$^W = 1;
+use strict;
 
 my $whois = "jwhois";
 system ("{ jwhois --version; } > /dev/null 2>&1");
 if ($? != 0)
   {
     $whois = `run-next -p "$0"`;
-    chop $whois;
+    chomp $whois;
   }
 
-open (F, "$whois @ARGV |");
-$/ = undef;
-my $buf = <F>;
-close (F);
+my $buf;
+{
+  local ($/) = undef;
+  open (F, "$whois @ARGV |");
+  $buf = <F>;
+  close (F);
+}
 
 my @s
   = (# NSI/Verisign (whois.networksolutions.com)
      "The Data in Network Solutions.*abide by this policy.\n+",
      "The Data in the VeriSign Registrar.*abide by this policy.\n+",
      "NOTICE AND TERMS OF USE: You are not authorized.*terms at any time.\n+",
+     "Get a FREE domain.*http://www.networksolutions.com\n+",
 
      #opensrs
      "The Data in the Tucows Registrar WHOIS.*DOMAIN AVAILABILITY.\n+",
@@ -47,15 +51,25 @@ my @s
 
      # whois.gandi.net preamble
      "% GANDI Registrar whois database for.*%[^\n]*\n+",
+
+     # whois.enom.net
+     "NOTICE: The expiration date.*expiration for this registration.\n+",
+     "TERMS OF USE:.*modify these terms at any time.\n+",
+     "The data in this whois.*abide by these terms.\nVersion[^\n]+\n+",
+
+     # whois.publicinterestregistry.net
+     "NOTICE: Access to .ORG WHOIS information.*abide by this policy.\n+",
+
+     # whois.nic.cc
+     "Whois Server Version.*-grs.com/whois/ for detailed information.\n+",
+     "NOTICE: The expiration date.*domains and Registrars.\n+",
+
+     # whois.educause.net
+     "\nThis Registry database contains ONLY .EDU domains..*-----\n+",
     );
 
-my $r;
-foreach $r (@s)
-  {
-    $buf =~ s/$r//s;
-  }
+$buf =~ s/[ \t]*\r?\n/\n/g;
+map { $buf =~ s/$_//s } @s;
 print $buf;
 
-# local variables:
-# mode: perl
-# end:
+# eof
