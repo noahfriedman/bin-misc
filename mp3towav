@@ -1,5 +1,0 @@
-#!/bin/sh
-# $Id$
-
-mpg123 --stdout ${1+"$1"} \
- | sox -t raw  -s -w -c2 -r 11025 - -t wav ${2+"$2"}

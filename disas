@@ -1,6 +1,0 @@
-#!/bin/sh
-exec objdump --disassemble-all \
-             --all-header \
-             --line-numbers \
-             --full-contents \
-        ${1+"$@"}
