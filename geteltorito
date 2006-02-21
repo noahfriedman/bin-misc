@@ -7,12 +7,28 @@ use Getopt::Std;
 # bootable CD image
 # R. Krienke 08/2001
 # krienke@uni-koblenz.de
-# Version 0.1
+# License: This script may be freely distributed
 #
-# For information on Eltorito see 
+# Get latest version from:
+# http://www.uni-koblenz.de/~krienke/ftp/noarch/geteltorito
+#
+$utilVersion="0.3"; 
+#
+# Version 0.3
+#    2006/02/21
+#    A patch from  Ben Collins <bcollins@ubuntu.com> to make the 
+#    utility work on PPC machines (change from 'L'-encoding in pack to 'V')
+# Version 0.2
+#    Several patches included from Nathan Stratton Treadway(nathant@ontko.com)
+#    to adjust the platform output as well as fixes for other minor bugs
+# Version 0.1
+#    Initial release
+#
+# For information on El Torito see 
 # http://www.cdpage.com/Compact_Disc_Variations/eltoritoi.html
 
 $secSize=2048;
+$ret=undef;$version=undef;$opt_h=undef;$loadSegment=undef;$systemType=undef;
 
 #
 # Read a particular sector from a file
@@ -36,21 +52,49 @@ sub getSector{
 
 
 #
+# Write eltorito data into a file
+#
+sub writeOutputFile{
+   my($name)=shift;
+   my($value)=shift;
+
+   open(OUT, ">".$name)|| die "$0: Cannot open outputfile \"$name\" for writing. Stop.";
+   print OUT $value;
+   close(OUT);
+}
+
+
+#
 # Usage
 #
 sub usage{
-	die "\n$0 [-h] cd-image \n",
-	    "	Script will try to extract an El Torito image from a \n",
-	    "	bootable CD (or cd-image)  and write the data extracted to STDOUT\n\n";
+	warn "\n$0 [-hv] [-o outputfilename] cd-image \n",
+	    "Script will try to extract an El Torito image from a \n",
+	    "bootable CD (or cd-image) given by <cd-image> and write \n",
+	    "the data extracted to STDOUT or to a file.\n",
+	    "   -h:        This help. \n",
+	    "   -v:        Print version of script and exit.\n",
+	    "   -o <file>: Write extracted data to file <file> instead of STDOUT.\n",
+	    "\n\n";
+	exit 0;    
 }
 
 
 # ---------------------------------------------------------------------
-$ret=getopts('hmncs:b:r:u:p:f:');
+$ret=getopts('hvo:');
  
+if( defined($opt_v) ){
+ 	warn "Version: $utilVersion \n";
+	exit 0;
+}
+
 if( defined($opt_h) || $#ARGV <0 ){
          usage(0);
 }	 
+
+if( defined($opt_o) ){
+   $outputFilename="$opt_o";
+}
 	 
 $imageFile=$ARGV[0];
 
@@ -69,25 +113,25 @@ if( ! -r $imageFile ){
 
 $sector=getSector(17, 1, $imageFile );
 ($boot, $isoIdent, $version, $toritoSpec,
- 	$unUsed, $bootP)= unpack( "Ca5CA32A32L", $sector );
+ 	$unUsed, $bootP)= unpack( "Ca5CA32A32V", $sector );
 
 if( $isoIdent ne "CD001" || $toritoSpec ne "EL TORITO SPECIFICATION" ){
-	die "This data image does not seem to be an bootable CD-image\n";
+	die "This data image does not seem to be a bootable CD-image\n";
 }	
 
-print STDERR "First entry in Bootcataloge is sector number $bootP\n";
-
 #
-# Now fetch the sector of the bootcatalog 
+# Now fetch the sector of the booting catalog 
 #
 $sector=getSector($bootP, 1, $imageFile );
 
-print STDERR "Bootcataloge start at sector: $bootP \n";
+print STDERR "Booting catalog starts at sector: $bootP \n";
 
-# The first 32 Bytes of this sector contains the validate entry for a
-# boot. The first Byte hast tobe 01, the next byte determines the
-# architecture the image is designed for where 00 is i86, 01 is PowerPC
-# and 02 is Mac. More data give info about manufacturer etc
+# The first 32 bytes of this sector contains the validation entry for a
+# boot. The first byte has to be 01, the next byte determines the
+# architecture the image is designed for, where 00 is i86, 01 is PowerPC
+# and 02 is Mac. More data give info about manufacturer, etc.  The 
+# final two bytes must contain 0x55 and 0xAA respectively (as 
+# defined by the El Torito standard).
 
 $validateEntry=substr($sector, 0, 32);
 
@@ -101,8 +145,8 @@ if( $header != 1 || $five != 0x55 || $aa != 0xaa ){
 print STDERR "Manufacturer of CD: $manufact\n";
 print STDERR "Image architecture: ";
 print STDERR "x86" if( $platform == 0 );
-print STDERR "x86" if( $platform == 1 );
-print STDERR "x86" if( $platform == 2 );
+print STDERR "PowerPC" if( $platform == 1 );
+print STDERR "Mac" if( $platform == 2 );
 print STDERR "unknown ($platform)" if( $platform > 2 );
 print STDERR "\n";
 
@@ -113,7 +157,7 @@ print STDERR "\n";
 $initialEntry=substr($sector, 32, 32);
 
 ($boot, $media, $loadSegment, $systemType, $unUsed, 
-	$sCount, $imgStart, $unUsed)=unpack( "CCSCCnLC", $initialEntry);
+	$sCount, $imgStart, $unUsed)=unpack( "CCSCCnVC", $initialEntry);
 
 if( $boot != 0x88 ){
 	die "Boot indicator in Initial/Default-Entry is not 0x88. CD is not bootable. \n";
@@ -121,7 +165,7 @@ if( $boot != 0x88 ){
 
 print STDERR "Boot media type is: ";
 if( $media == 0 ){
-	print STDERR "none";
+	print STDERR "no emulation";
 	$count=0;
 }
 if( $media == 1 ){
@@ -142,15 +186,20 @@ if( $media == 4 ){
 }
 print STDERR "\n";
 
-# Only use the inernal sector counter if the real size is unknown
+# Only use the internal sector counter if the real size is unknown
 # ($count==0)
 $cnt=$count==0?$sCount:$count;
 
-print STDERR "Torito image starts at sector $imgStart and has $cnt sector(s) of $secSize Bytes \n";
+print STDERR "El Torito image starts at sector $imgStart and has $cnt sector(s) of $secSize Bytes\n";
 
 # We are there:
 # Now read the bootimage to stdout
 $image=getSector($imgStart, $cnt, $imageFile);
 
-print "$image";
-print STDERR "Image has been written to stdout ....\n"; 
+if( length($outputFilename) ){
+   writeOutputFile($outputFilename, $image);
+   print STDERR "\nImage has been written to file \"$outputFilename\".\n";
+}else{
+   print "$image";
+   print STDERR "Image has been written to stdout ....\n"; 
+}
