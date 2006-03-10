@@ -4,7 +4,7 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.1 1996/03/05 22:07:12 friedman Exp $
+# $Id: tree-diff,v 1.2 2005/09/14 04:41:36 friedman Exp $
 
 exclude_pats='
     CVS
@@ -14,6 +14,8 @@ exclude_pats='
     *.[ao]
     *~
 '
+
+set -o noglob
 
 if diff --version 2>&1 | grep 'GNU' > /dev/null; then
   case $1 in
