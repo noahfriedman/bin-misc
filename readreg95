@@ -1,0 +1,466 @@
+#!/usr/bin/perl -w
+#
+# readreg95
+# Copyright (C) 2003 by Edgar Holleis
+#
+# ***
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# ***
+#
+# Bug reports to: nospam -AT- caracalla.htu.tuwien.ac.at
+# Please contact me if you want to distribute it under a different license.
+# 
+# Works well with Perl 5.8, Linux
+
+
+use strict;
+use utf8;
+use Encode;
+
+                                        # global registry data structures
+my ($creg_id, $creg_version, $creg_rgdb_off, $creg_rgdb_num);
+my ($rgkn_id, $rgkn_size, $rgkn_root_off, $rgkn_last_dke);
+my @rgdb_blocks;                        # array of rgdb headers
+my %cur_rgdb = ( "nrMS" => -1 , "data" => undef );       # 1 cached rgdb
+my $rgkn_buf;                           # the whole tree-structure, raw
+my ($FH, $filename);
+my $hk_prefix = "";                     # user.dat -> HKU, system.dat -> HKLM
+my $regencoding = "cp1252";             # standard
+
+
+# ********* reghash ***********
+# calculate simple Registry has
+# in: thing to hash
+# out: hash
+sub reghash {
+  my $h = 0;
+  foreach (split(//, uc($_[0]))) {
+    next if ord >= 128;
+    $h += ord;
+  }
+  return $h;
+}
+
+
+# ********* finddke ***********
+# find a dke by its hashvalue within a chain in the rgkn-tree
+# in: (p) offset of start-dke
+#     (find_hash) the hash to find
+#     (ignore_first) if the current dke should be included in the search
+# out: (nrMS, nrLS) the address of the corresponding dkh-entry
+#     (p) offset of the dke found
+#     (next_sub) starting dke of tree-leave
+#     - OR -
+#     undef - if hash was not found.
+sub finddke {
+  my $p = shift;
+  my $find_hash = shift;
+  my $ignore_first = shift;
+  my ($dke_hash, $dke_prevlvl, $dke_nextsub, $dke_next, $dke_nrLS, $dke_nrMS); 
+  while (1) {
+    if ($p == 0xFFFFFFFF) {
+      undef $dke_hash;
+      last;
+    }
+    my $tmp = substr ($rgkn_buf, $p, 28);
+    ($dke_hash, $dke_prevlvl, $dke_nextsub, $dke_next, $dke_nrLS, 
+      $dke_nrMS) = unpack("x4Vx4VVVvv", $tmp);
+    # print "finddke step: p=$p, hash=$dke_hash, prevlvl=$dke_prevlvl," . 
+    #   " nextsub=$dke_nextsub, next=$dke_next, nrLS=$dke_nrLS," . 
+    #   " nrMS=$dke_nrMS\n";
+    if ($ignore_first) {
+      $p = $dke_next;
+      $ignore_first = 0;
+      next;
+    }
+    last if ($find_hash == $dke_hash);
+    $p = $dke_next;
+  } 
+  if ((defined $dke_hash) && wantarray) { 
+    return ($dke_nrMS, $dke_nrLS, $p, $dke_nextsub); 
+  }
+  return (undef);
+}
+
+
+# ********* traversedke ***********
+# traverse the rgkn-tree and return a (nrMS, nrLS) pair on each invocation.
+# USES GLOBALS FOR INITIAL SETUP:
+#  (@traversedke_stack) should contain 1 element, the offset of starting point
+#  ($traversedke_recursiv) only current chain, or recurse into subtrees
+#  ($traversedke_init) should be 1 on first invocation
+# out: (nrMS, nrLS) the address of the next dkh-entry
+#      - OR -
+#      undef if traversal is finished
+my (@traversedke_stack, $traversedke_recursiv, $traversedke_init);
+sub traversedke {
+  my $p = pop(@traversedke_stack);
+  return undef unless (defined $p && ($p != 0xFFFFFFFF));
+  my $tmp = substr ($rgkn_buf, $p, 28);
+  my ($dke_hash, $dke_prevlvl, $dke_nextsub, $dke_next, $dke_nrLS, 
+      $dke_nrMS) = unpack("x4Vx4VVVvv", $tmp);
+  if ($traversedke_init) {
+    $traversedke_init = 0;
+    push @traversedke_stack, $p;
+    return ($dke_nrMS, $dke_nrLS);    
+  }
+  unless ($traversedke_recursiv) {
+    return undef if ($dke_next == 0xFFFFFFFF);
+    $p = $dke_next;
+  } else {
+    if ($dke_nextsub != 0xFFFFFFFF) {
+      push @traversedke_stack, ($p);
+      $p = $dke_nextsub;
+      # print "Debug: nextsub p=$p l=$#traversedke_stack  ";
+    } elsif ($dke_next != 0xFFFFFFFF) {
+      $p = $dke_next;
+      # print "Debug: next    p=$p l=$#traversedke_stack  ";
+    } else {
+      while ($dke_next == 0xFFFFFFFF) {
+        $p = pop(@traversedke_stack);
+        return undef unless (defined $p);
+        $tmp = substr ($rgkn_buf, $p, 28);
+        ($dke_hash, $dke_prevlvl, $dke_nextsub, $dke_next, $dke_nrLS, 
+          $dke_nrMS) = unpack("x4Vx4VVVvv", $tmp);
+      }
+      $p = $dke_next;
+      # print "Debug: prevlvl p=$p l=$#traversedke_stack  ";
+    }  
+  }
+  $tmp = substr ($rgkn_buf, $p, 28);
+  ($dke_hash, $dke_prevlvl, $dke_nextsub, $dke_next, $dke_nrLS, 
+    $dke_nrMS) = unpack("x4Vx4VVVvv", $tmp);
+  push @traversedke_stack, $p; 
+  return ($dke_nrMS, $dke_nrLS);    
+}
+
+
+# ********* loaddkh ***********
+# fetch a dkh and its dkvs and return it
+# Note: uses $cur_rgdb
+# in: (nrMS, nrLS) Adress of dkh to fetch
+# out: ($keyname) 
+#      ($values) pointer to % with registry-values in .reg - file format
+sub loaddkh {
+  my $nrMS = shift;
+  my $nrLS = shift;
+  return unless ((defined $nrMS) && (defined $nrLS));
+  # load the right rgdb if it isnt loaded yet ...
+  # TODO: implement some primitive IO-buffering.
+  unless ($nrMS == $cur_rgdb{"nrMS"}) {
+    seek $FH, $rgdb_blocks[$nrMS]->{"pos"}, 0;
+    read $FH, $cur_rgdb{"data"}, $rgdb_blocks[$nrMS]->{"size"};   
+    $cur_rgdb{"nrMS"} = $nrMS;
+    # print "loaddkh: cur_rgdb loaded: " . length($cur_rgdb{"data"}) . "\n";
+  }
+  my ($dkh_nextkeyoff, $dkh_nrLS, $dkh_nrMS, $dkh_bytesused, 
+    $dkh_keynamelen, $dkh_values);
+  my $dkh; my $p = 0;
+  $dkh_nrLS = -1;
+  $dkh_nextkeyoff = 32; # initialize loop, skipping rgdb-header
+  # now search dkh ...
+  while (($nrLS != $dkh_nrLS) && ($p <= length($cur_rgdb{"data"})-20)) {
+    $p += $dkh_nextkeyoff;
+    $dkh = substr($cur_rgdb{"data"}, $p, 20);
+    ($dkh_nextkeyoff, $dkh_nrLS, $dkh_nrMS, $dkh_bytesused, 
+      $dkh_keynamelen, $dkh_values) = unpack("VvvVvv", $dkh);
+  #   print "loaddkh: p=$p, nextkeyoff=$dkh_nextkeyoff, nrLS=$dkh_nrLS, " . 
+  #     "nrMS=$dkh_nrMS, bytesused=$dkh_bytesused, " . 
+  #     "keynamelen=$dkh_keynamelen, values=$dkh_values\n";
+  }
+  return if $nrLS != $dkh_nrLS; # dkh not found
+  my $keyname = substr($cur_rgdb{"data"}, $p+20, $dkh_keynamelen);
+  $keyname = decode($regencoding, $keyname);
+  
+  # now get the values
+  my $values = {};
+  $p += 20 + $dkh_keynamelen;
+  for (my $i = 0; $i < $dkh_values; $i++) {
+    my $dkv = substr($cur_rgdb{"data"}, $p, 12);
+    my ($dkv_type, $dkv_valnamelen, $dkv_valdatalen) = unpack("Vx4vv", $dkv);
+    # print "loaddkh: (val)  p=$p, type=$dkv_type, valnamelen=$dkv_valnamelen" .
+    #   ", valdatalen=$dkv_valdatalen\n";
+    my $valname = "@";
+    if ($dkv_valnamelen > 0) {
+      $valname = substr($cur_rgdb{"data"}, $p+12, $dkv_valnamelen);
+      $valname = decode($regencoding, $valname);
+      $valname =~ s/\"/\\\"/;
+      $valname = '"' . $valname . '"';
+    }
+    my $valdata = "";
+    if ($dkv_valdatalen > 0) {
+      $valdata = substr($cur_rgdb{"data"}, $p+12+$dkv_valnamelen, 
+        $dkv_valdatalen);
+    }
+    DKVSWITCH: {
+      if ($dkv_type == 1) { 
+        $valdata = decode($regencoding, $valdata);
+        $valdata =~ s/\\/\\\\/g;
+        $valdata =~ s/\"/\\\"/g;
+        $valdata = '"' . $valdata . '"';
+        last DKVSWITCH;
+      }
+      if ($dkv_type == 4) {
+        ($valdata) = (($dkv_valdatalen == 4) ? unpack("V", $valdata) : 0);
+        $valdata = sprintf("dword:%08x", $valdata); 
+        last DKVSWITCH;
+      }
+      my ($tmp, $l);
+      if ($dkv_type == 7) { $tmp = "hex(7):"; }
+      elsif ($dkv_type == 2) { $tmp = "hex(2):"; }
+      else { $tmp = "hex:"; }
+      $l = length($valname) + 1 + length($tmp);
+      foreach (split(//, $valdata)) { 
+        if ($l + 3 >= 80) { $tmp .= "\\\n  "; $l = 2; }
+        $tmp .= sprintf("%02x,", unpack("C", $_)); 
+        $l += 3;
+      } 
+      chop $tmp if length($valdata);
+      $valdata = $tmp;
+    }
+    $values->{$valname} = $valdata;
+    # print "loaddkh: (val) valname=$valname, valdata=$valdata\n";
+    $p += 12 + $dkv_valnamelen + $dkv_valdatalen;
+  }
+  return ($keyname, $values);
+}
+  
+
+# ********* initstructures ***********
+# open file, initialize structures...
+sub initstructures {
+  open ($FH, "<:raw", $_[0]) || die "can’t open $_[0]: $!";
+
+  my $tmp;
+  read ($FH, $tmp, 32); # read creg
+  ($creg_id, $creg_version, $creg_rgdb_off, $creg_rgdb_num) =
+    unpack("A4VVx4v", $tmp);
+
+  read ($FH, $rgkn_buf, 32); # read rgkn
+  ($rgkn_id, $rgkn_size, $rgkn_root_off, $rgkn_last_dke) =
+    unpack("A4VVV", $rgkn_buf);
+
+  read ($FH, $rgkn_buf, $rgkn_size - 32, 32);  # get the whole block
+  
+  # now get the positions of all the rgdbs, so that we can efficently
+  #   load them later
+  my $fp = $creg_rgdb_off;
+  for (my $i=0; $i < $creg_rgdb_num; $i++) {
+    seek $FH, $fp, 0;
+    read $FH, $tmp, 32;
+    my $rgdb = {};
+    ($rgdb->{"id"}, $rgdb->{"size"}) = unpack ("A4V", $tmp);
+    $rgdb->{"pos"} = $fp;
+    $fp += $rgdb->{"size"};
+    push @rgdb_blocks, ($rgdb);
+  }   
+}
+
+# ********* getsinglekey ***********
+# find key by name and return reg-values
+# in: ($regkey) its name
+# out: ($outname) its name but in the same case as its found in the registry
+#      ($values) pointer to % with registry-values in .reg - file format
+#      ($p) offset of the dke found
+#      ($next_sub) starting dke of tree-leave
+# die: if key not found.
+sub getsinglekey {
+  my $regkey = shift;
+  # find root-node
+  my ($nrMS, $nrLS, $p, $nextsub) = finddke ($rgkn_root_off, 0);
+  # print "debug: nrMS=$nrMS, nrLS=$nrLS, p=$p, nextsub=$nextsub\n";
+  my ($keyname, $values);
+  my $outkeyname = "";
+  my $errortmp; 
+  foreach my $subkey (split(/\\/, $regkey)) {
+    $errortmp = $subkey;
+    # print "debug: subkey=$subkey\n";
+    next if $subkey =~ /^$/;
+    if ($outkeyname eq "") {   # treat first subkey differently
+      if (uc($subkey) eq "HKLM") { $subkey = "HKEY_LOCAL_MACHINE";}
+      if (uc($subkey) eq "HKU") { $subkey = "HKEY_USERS";}
+      if ((uc($subkey) . "\\") eq uc($hk_prefix)) {
+        undef $errortmp;
+        next;
+      }
+    }
+    my $reghash = reghash($subkey);
+    ($nrMS, $nrLS, $p, $nextsub) = finddke($nextsub, $reghash);
+    last unless defined $nrMS;
+    # print "debug: nrMS=$nrMS, nrLS=$nrLS, p=$p, nextsub=$nextsub\n";
+    ($keyname, $values) = loaddkh($nrMS, $nrLS);
+    last unless defined $keyname;
+    # print "debug: keyname=$keyname, values=$values\n";
+    while (uc($keyname) ne uc($subkey)) {
+      print "debug: ne codepath!\n";
+      ($nrMS, $nrLS, $p, $nextsub) = finddke($p, $reghash, 1);
+      last unless defined $nrMS;
+      # print "debug: nrMS=$nrMS, nrLS=$nrLS, p=$p, nextsub=$nextsub\n";
+      ($keyname, $values) = loaddkh($nrMS, $nrLS);
+      last unless defined $keyname;
+      # print "debug: keyname=$keyname, values=$values\n";
+    }  
+    last unless ((defined $keyname) && (defined $nrMS));
+    $outkeyname .= $keyname . "\\";
+  }
+  chop $outkeyname;
+  unless ((defined $keyname) && (defined $nrMS)) {  # did we find something?
+    if (defined $errortmp) {                  # was there something to find?
+      die "[$hk_prefix$outkeyname]\nError: Subkey \"$errortmp\" not found.\n";
+    } else {
+      return ("", {}, $p, $nextsub);          # just looking for root-key
+    }
+  }
+  return ($outkeyname, $values, $p, $nextsub);
+}
+
+
+# ********* main ***********
+# first parse command line
+my @args; my %switches; my @argvals;
+my $syntaxerror = "";
+while ($#ARGV >= 0) {
+  my $arg = shift(@ARGV);
+  if (lc($arg) eq "--version") { 
+    print "readreg95 1.0\nCopyright (C) 2003, Edgar Holleis\n"; exit; 
+  }
+  if (lc($arg) eq "--help") { 
+    print "readreg95 1.0\nCopyright (C) 2003, Edgar Holleis\n" . 
+      "readreg95 [-w] [-r] [-ls] [-va RegVal] [-c encoding] REFILE.DAT KEY\n" .
+      "  -ls .. list subkeys\n  -w  .. windows regedit compatible output\n" .
+      "  -r  .. recursivly include subkeys\n" .
+      "  -va .. only output Regval, not whole key\n" . 
+      " * Don't forget to escape shell caracters.\n\n";
+    exit;
+  }
+  if ($arg =~ /^-[a-zA-Z0-9]+$/) {
+    $arg = lc($arg);
+    if ($arg eq "-w") { $switches{"w"} = 1; next; }
+    if ($arg eq "-r") { $switches{"r"} = 1; next; } # not implemented
+    if ($arg eq "-ls") { $switches{"ls"} = 1; next; }
+    if ($arg eq "-va") { push @argvals, shift(@ARGV); next; }
+    if ($arg eq "-c") { $regencoding = shift(@ARGV); next; }
+    $syntaxerror = "Invalid argument: $arg";
+  } else {
+    push @args, ($arg);
+  }
+}
+if ($#args < 1) { $syntaxerror = "Too few arguments."; }
+if ($#args > 1) { $syntaxerror = "Too many arguments."; }
+unless (grep($regencoding, (Encode->encodings("Encode::Byte")))) {
+  $syntaxerror = "Encoding \"$regencoding\" not supported by Perl.";
+}
+if ($switches{"ls"} && ($switches{"w"} || ($#argvals >= 0))) {
+  $syntaxerror = "-ls not compatible with -w, -va.";
+}
+if ($switches{"r"} && ($#argvals >= 0)) {
+  $syntaxerror = "-r not compatible with -va.";
+}
+if (! $switches{"ls"} && $switches{"r"}) { $switches{"w"} = 1; }
+my $regkey;
+unless ($syntaxerror) {
+  $filename = shift(@args);
+  unless (-f $filename) { $syntaxerror = "\"$filename\" does not exist."; }
+  $regkey = shift(@args);
+  unless ($regkey =~ /^(\\?([[:alnum:].()# ]+\\)*[[:alnum:].()# ]+\\?)|\\$/) {
+    $syntaxerror = "\"$regkey\" is not a valid name for a registry key.";
+  }
+  foreach my $val (@argvals) { 
+    unless (defined $val) {
+      $syntaxerror = "-va needs an argument."; last;
+    }
+    unless ($val =~ /^[[:alnum:].()# ]+$/) { 
+      $syntaxerror = "\"$val\" is not a valid name for a registry value.";
+    }
+  }
+}
+if ($syntaxerror) {
+  die "Error in command line.\n$syntaxerror\n--help for help.\n";
+}
+foreach ($filename) {
+  if (/user\.da(0|t)$/i) { $hk_prefix = "HKEY_USERS\\"; last; }
+  if (/system\.da(0|t)$/i) { $hk_prefix = "HKEY_LOCAL_MACHINE\\"; last; }
+  print STDERR "Didn't recognize registry-hive. Continuning anyway." .
+    " All keypaths are relative.\n";
+}
+
+# commandline parsed, no get to real business
+
+initstructures $filename;
+
+my ($outkeyname, $values, $p, $nextsub) = getsinglekey($regkey);
+$outkeyname =  $hk_prefix . $outkeyname;
+if ($outkeyname =~ /\\$/) { chop $outkeyname; }
+
+# everything fine, we found the key
+# from here to EOF: output 
+
+if ($switches{"w"}) { print "REGEDIT4\n\n"; }
+
+# first the case where we need to traverse the registry....
+if ($switches{"ls"} || $switches{"r"}) {
+  $traversedke_recursiv = $switches{"r"};
+  push @traversedke_stack, ($nextsub);
+  $traversedke_init = 1;
+  print "[" . $outkeyname . "]" . "\n";
+  if ($switches{"w"}) { print "\n"; }
+  my ($nrMS, $nrLS, @outnames, $reloutkeyname);
+  while (1) {
+    ($nrMS, $nrLS) = traversedke();
+    exit 0 unless (defined $nrMS);
+    ($reloutkeyname, $values) = loaddkh($nrMS, $nrLS);
+    if ($switches{"r"}) { 
+       $#outnames = $#traversedke_stack - 1;
+       push @outnames, $reloutkeyname;
+       $reloutkeyname = join("\\", @outnames);
+       if ($switches{"w"}) { 
+         $reloutkeyname = "[$outkeyname\\$reloutkeyname]"; 
+       }
+    } 
+    print $reloutkeyname . "\n";
+    unless ($switches{"ls"}) {
+      foreach my $v (keys %$values) {
+        print "$v=$values->{$v}\n";
+      }
+      print "\n";
+    }
+  } # loop never returns
+}  
+
+# no, we only want a single value
+if ($switches{"w"} || ($#argvals < 0)) { print "[$outkeyname]\n"; }
+if ($#argvals < 0) {
+  foreach my $v (keys %$values) {
+    print "$v=$values->{$v}\n";
+  }
+} else {
+  foreach my $va (@argvals) {
+    $va = '"' . $va . '"';
+    # my ($vb) = grep($va, keys %$values);  # doesnt work
+    my $vb;
+    foreach (keys %$values) { next unless (uc($_) eq uc($va)); $vb = $_; }
+    if ($vb) { 
+      if ($switches{"w"}) {
+        print "$vb=$values->{$vb}\n";
+      } else {
+        print $values->{$vb} . "\n"; 
+      }
+    }
+  }
+}
+if ($switches{"w"} || ($#argvals < 0)) { print "\n"; }
+exit 0;
