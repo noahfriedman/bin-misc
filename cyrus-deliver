@@ -4,7 +4,7 @@
 # Created: 2005-05-12
 # Public domain
 
-# $Id: cyrus-deliver,v 1.2 2005/05/16 20:02:40 friedman Exp $
+# $Id: cyrus-deliver,v 1.3 2006/03/27 20:58:32 friedman Exp $
 
 # Commentary:
 
@@ -29,6 +29,7 @@ get_lock()
 {
   tmplock=$lockfile.$$
   echo $$ > $tmplock
+  tmplstat=`stat -c "%i %Y" $tmplock`
   while : ; do
     if link $tmplock $lockfile 2> /dev/null ; then
       unlink $tmplock
@@ -37,9 +38,7 @@ get_lock()
     fi
 
     # Someone else has the lock; see if they're still alive.
-    tmplstat=`stat -c "%i %Y" $tmplock`
     pid=`cat $lockfile 2> /dev/null`
-
     if [ -n "$pid" ] \
        && ! kill -0 $pid 2> /dev/null \
        && rm -f $lockfile \
@@ -79,11 +78,11 @@ do_delivery()
            1 ) set "user.$USER.$1" ;;
          esac
 
-         echo $libdir/deliver-wrapper "$1"
+         $libdir/deliver-wrapper "$1"
        else
          case $# in
-           0 ) echo $libdir/deliver -a "$USER" "$USER"         ;;
-           * ) echo $libdir/deliver -a "$USER" -m "$1" "$USER" ;;
+           0 ) $libdir/deliver -a "$USER" "$USER"         ;;
+           * ) $libdir/deliver -a "$USER" -m "$1" "$USER" ;;
          esac
        fi
      }
