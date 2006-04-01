@@ -4,7 +4,7 @@
 # Created: 2005-05-12
 # Public domain
 
-# $Id: cyrus-deliver,v 1.3 2006/03/27 20:58:32 friedman Exp $
+# $Id: cyrus-deliver,v 1.4 2006/03/27 21:01:51 friedman Exp $
 
 # Commentary:
 
@@ -91,11 +91,11 @@ do_delivery()
 main()
 {
   if get_lock ; then
-    do_delivery
+    do_delivery ${1+"$@"}
   fi
   remove_lock
 }
 
-main
+main ${1+"$@"}
 
 # eof
