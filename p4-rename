@@ -1,0 +1,62 @@
+#!/usr/bin/env perl
+# $Id$
+
+$^W = 1;  # enable warnings
+
+use Getopt::Long;
+use strict;
+
+my $p4 = $ENV{P4} || 'p4' ;
+
+my %p4_options
+  = ( 'integrate' => 'c:dD:fhionrtv',
+      'delete'    => 'c:n',
+    );
+
+sub p4opts
+{
+  # getopt uses this var; we don't want it clobbering either the global
+  # array or the args to this function.
+  local @ARGV = @_;
+  my $cmd = shift @ARGV;
+
+  my $optstr = $p4_options{$cmd};
+  return undef unless defined $optstr;
+
+  my %opts;
+  Getopt::Long::Configure (qw(bundling passthrough));
+  GetOptions (map { s/:/=s/;
+                   ($_ => sub { $opts{'-' . $_[0]}
+                                  = ($optstr =~ /$_[0]:/
+                                     ? $_[1]
+                                     : undef)
+                                })
+                  } split (/(?!:.:?)/, $optstr));
+
+  return (map { defined $opts{$_} ? ($_, $opts{$_}) : $_ }
+      sort keys %opts);
+}
+
+sub p4cmd
+{
+  my @cmd = ($p4, @_);
+
+  print "+ ", join (" ", @cmd), "\n";
+  system (@cmd);
+}
+
+sub p4_rename
+{
+  my $to   = pop @_;
+  my $from = pop @_;
+
+  my @integ_opts =  p4opts ('integrate', @_);
+  my @del_opts   =  p4opts ('delete',    @_);
+
+  p4cmd ('integrate', @integ_opts, $from, $to);
+  p4cmd ('delete',    @del_opts,   $from);
+}
+
+p4_rename (@ARGV);
+
+# eof
