@@ -4,7 +4,7 @@
 # Created: 2005-05-12
 # Public domain
 
-# $Id: cyrus-deliver,v 1.4 2006/03/27 21:01:51 friedman Exp $
+# $Id: cyrus-deliver,v 1.5 2006/04/01 00:54:55 friedman Exp $
 
 # Commentary:
 
@@ -53,7 +53,7 @@ get_lock()
       esac
     fi
 
-    logger -i -p user.notice -t cyrus-deliver \
+    logger -i -p mail.notice -t cyrus-deliver \
       "waiting 5s for pid $pid to release lock"
     sleep 5
   done
