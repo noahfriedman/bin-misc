@@ -1,0 +1,29 @@
+#!/bin/sh
+# $Id$
+
+ititle=${ITITLE-countdown}
+fn=12x24
+w=18
+h=2
+
+case ${_CT+set} in
+  set ) export -n _CT
+        xterm-set hide-cursor    \
+                  font       $fn \
+                  width      $w  \
+                  height     $h  \
+                  icon-title "$ititle"
+        exec countdown $_CT ;;
+esac
+
+case $# in
+  0 ) echo "Usage: $0 [timestamp]" 1>&2; exit 1 ;;
+esac
+
+_CT="$*"
+SHELL=$0
+export _CT SHELL
+
+exec xterm -g ${w}x${h} -fn $fn -title notitle -ut
+
+# eof
