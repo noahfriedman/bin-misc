@@ -4,15 +4,39 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.2 2005/09/14 04:41:36 friedman Exp $
+# $Id: tree-diff,v 1.3 2006/03/10 04:17:01 friedman Exp $
 
 exclude_pats='
     CVS
     RCS
-    core
-    *.core
-    *.[ao]
+    {arch}
+    .svn
+
+    .arch-ids
+    .arch-inventory
+    .cvsignore
+
     *~
+    #*#
+    .#*
+
+    TAGS
+
+    core
+    core.[0-9]*
+    *.core
+
+    *.[ao]
+    *.obj
+    *.so
+    lib*.so.*
+    *.elc
+    *.class
+    *.dvi
+
+    autom4te.cache
+    config.log
+    config.status
 '
 
 set -o noglob
