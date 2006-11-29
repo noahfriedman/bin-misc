@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
-# $Id$
+# $Id: scrab,v 1.1 2006/06/26 08:07:21 friedman Exp $
 
 $^W = 1;
 
 use strict;
 
-my $dictfile = "/usr/share/dict/words";
+my $dictfile = $ENV{SCRABDICT} || "/usr/share/dict/words";
 
 my %letter_frequency
   = ( a =>  9,    k =>  1,    u =>  4,
