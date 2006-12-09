@@ -1,7 +1,10 @@
 #!/bin/sh
-# $Id$
+# $Id: fix-directory-timestamps,v 1.3 2005/10/29 04:00:07 friedman Exp $
 
 ignore='CVS RCS {arch} .svn'
+ignore_meta='MD5SUM SHA1SUM TRANS.TBL'
+
+ignore=${FDT_IGNOREMETA+"$ignore $ignore_meta"}
 
 find_ign=`for i in $ignore; do echo ! -name $i ; done`
 sed_ign=` for i in $ignore; do echo "/^$i\$/d" ; done`
