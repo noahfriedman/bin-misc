@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# $Id: whois,v 1.12 2005/12/29 15:48:04 friedman Exp $
+# $Id: whois,v 1.13 2006/02/05 06:41:37 friedman Exp $
 
 $^W = 1;
 use strict;
@@ -62,7 +62,7 @@ my @s
 
      # whois.nic.cc
      "Whois Server Version.*-grs.com/whois/ for detailed information.\n+",
-     "NOTICE: The expiration date.*domains and Registrars.\n+",
+     "NOTICE: The expiration date.*domains[\n ]and Registrars.\n+",
 
      # whois.educause.net
      "\nThis Registry database contains ONLY .EDU domains..*-----\n+",
