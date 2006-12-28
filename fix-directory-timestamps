@@ -1,11 +1,11 @@
 #!/bin/sh
-# $Id: fix-directory-timestamps,v 1.4 2006/12/09 10:16:07 friedman Exp $
+# $Id: fix-directory-timestamps,v 1.5 2006/12/16 00:54:32 friedman Exp $
 
 ignore='CVS RCS {arch} .svn'
 ignore_meta='MD5SUM SHA1SUM TRANS.TBL'
 
-case ${FDT_IGNOREMETA+set} in
-  set ) ignore="$ignore $ignore_meta" ;;
+case $1 in
+  -m ) ignore="$ignore $ignore_meta" ; shift ;;
 esac
 
 find_ign=`for i in $ignore; do echo ! -name $i ; done`
