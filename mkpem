@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id$
+# $Id: mkpem,v 1.1 2007/01/11 00:36:32 friedman Exp $
 
 # Commentary:
 
@@ -63,9 +63,18 @@ mkpem()
 
   {
     echo "[ req ]"
-    echo RANDFILE           = /dev/urandom
-    echo distinguished_name = req_dn
-    echo prompt             = no
+    echo RANDFILE               = /dev/urandom
+    echo distinguished_name     = req_dn
+    echo prompt                 = no
+    echo x509_extensions        = v3_ca
+    echo
+    echo "[ v3_ca ]"
+    echo subjectKeyIdentifier   = hash
+    echo authorityKeyIdentifier = keyid:always,issuer:always
+    #echo basicConstraints      = CA:true
+    #echo nsCertType            = critical, sslCA, emailCA, client, server, email, objsign
+    echo basicConstraints       = CA:false
+    echo nsCertType             = server
     echo
     echo "[ req_dn ]"
     while read l; do echo "$l" ; done < $config
