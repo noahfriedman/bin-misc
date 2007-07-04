@@ -1,0 +1,9 @@
+#!/bin/sh
+# $Id$
+
+RSYNC_RSH=ssh-rexec
+export RSYNC_RSH
+
+exec rsync-mirror ${1+"$@"}
+
+# eof
