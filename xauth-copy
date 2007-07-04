@@ -1,0 +1,8 @@
+#! /bin/sh
+# $Id$
+
+key=$1
+from=$2
+to=$3
+
+xauth -f "$from" extract - "$key" | xauth -f "$to" merge -
