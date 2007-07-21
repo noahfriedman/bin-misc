@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: gmplayer,v 1.1 2005/06/07 23:44:28 friedman Exp $
 
 exec run-next "$0" \
     -quiet \
@@ -7,4 +7,5 @@ exec run-next "$0" \
     -nolirc \
     -nojoystick \
     -xy 2 \
+    -loop 1024 \
     "$@" > /dev/null
