@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: yemacs,v 1.9 2005/06/01 16:42:49 friedman Exp $
+# $Id: yemacs,v 1.10 2005/08/15 12:56:40 friedman Exp $
 
 # Prevent emacs bugs from consing all memory and thrashing the system until
 # linux decides to start nuking other processes for more space.
@@ -11,15 +11,13 @@ case `basename $0` in
     builddirs="
        $HOME/src/emacs/build/current/src
        /export/src/emacs/build/current/src
-       /fs/u3/sys/emacs-21-build/current/src
     "
    ;;
 
-  mtemacs )
+  u2emacs )
     builddirs="
-       $HOME/src/emacs/build/multi-tty/current/src
-       /export/src/emacs/build/multi-tty/current/src
-       /fs/u3/sys/emacs-21-build/multi-tty/current/src
+       $HOME/src/emacs/build/unicode2/current/src
+       /export/src/emacs/build/unicode2/current/src
     "
    ;;
 esac
@@ -29,8 +27,8 @@ case $1 in
   -login ) progname=-emacs; shift ;;
   -attach )
     case $DISPLAY in
-      '' ) exec gnuclient --eval "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
-      *  ) exec gnuclient --eval "(make-frame-on-display \"$DISPLAY\")" ;;
+      '' ) exec gnuclient -batch -eval "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
+      *  ) exec gnuclient -batch -eval "(make-frame-on-display \"$DISPLAY\")" ;;
     esac ;;
 esac
 
