@@ -1,9 +1,9 @@
 #! /bin/sh
-# $Id$
+# $Id: cvs-emacs,v 1.1 2004/06/07 07:32:10 friedman Exp $
 
 # Check out emacs from the source tree non-anonymously.
 
-CVSROOT=:ext:friedman@savannah.gnu.org:/cvsroot/emacs
+CVSROOT=:ext:friedman@cvs.savannah.gnu.org:/cvsroot/emacs
 CVS_RSH=ssh-rexec
 
 export CVSROOT CVS_RSH
