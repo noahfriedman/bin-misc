@@ -4,9 +4,9 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.4 2006/08/26 00:46:38 friedman Exp $
+# $Id: tree-diff,v 1.5 2007/04/09 01:56:13 friedman Exp $
 
-exclude_pats='
+exclude_pats=${EXCLUDE_PATS-'
     CVS
     RCS
     {arch}
@@ -38,7 +38,7 @@ exclude_pats='
     autom4te.cache
     config.log
     config.status
-'
+'}
 
 set -o noglob
 
