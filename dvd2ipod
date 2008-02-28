@@ -1,0 +1,11 @@
+#!/bin/sh
+# $Id$
+
+exec HandBrakeCLI \
+    -Z "iPod Low-Rez" \
+    -2 \
+    -T \
+    -m \
+    "$@"
+
+# eof
