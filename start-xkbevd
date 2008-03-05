@@ -1,0 +1,6 @@
+#!/bin/sh
+# $Id$
+
+with -s run-misc.sh xkbevd -bg > $HOME/.xinitrc.log 2>&1 < /dev/null
+
+# eof
