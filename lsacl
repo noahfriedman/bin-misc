@@ -1,0 +1,12 @@
+#!/bin/sh
+# $Id$
+
+exec getfacl \
+    --access \
+    --default \
+    --all-effective \
+    --absolute-names \
+    --tabular \
+    "$@"
+
+# eof
