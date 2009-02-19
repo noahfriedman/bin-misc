@@ -1,12 +1,12 @@
 #!/bin/sh
-# $Id$
+# $Id: flv2avi,v 1.1 2006/12/30 05:09:30 friedman Exp $
 
 # A perhaps similar technique might be to use:
 #   mencoder -oac copy -ovc lavc -o out.avi in.flv
 
 for flv in ${1+"$@"}; do
   avi=`echo "$flv" | sed -e 's=.flv$=.avi='`
-  ffmpeg -y -i "$flv" -acodec copy "$avi"
+  ffmpeg -y -i "$flv" -sameq -acodec copy "$avi"
 done
 
 # eof
