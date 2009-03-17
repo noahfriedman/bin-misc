@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# $Id: scrab,v 1.1 2006/06/26 08:07:21 friedman Exp $
+# $Id: scrab,v 1.2 2006/11/29 04:56:22 friedman Exp $
 
 $^W = 1;
 
@@ -74,6 +74,7 @@ sub main
   my %match;
   while (<F>)
     {
+      next if length ($_) > (length ($_[0]) + 1);
       next if length ($_) < 4; # includes NL, so skip 1-2 letter words
       next if ($_[1] && ! /$_[1]/io);
       chop;
