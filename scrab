@@ -1,35 +1,76 @@
 #!/usr/bin/env perl
-# $Id: scrab,v 1.2 2006/11/29 04:56:22 friedman Exp $
+# $Id: scrab,v 1.3 2009/03/17 22:35:55 friedman Exp $
+
+# TODO: Generate a DAG and search that.
+# The current algorithm is very inefficient.
 
 $^W = 1;
 
 use strict;
+use Getopt::Long;
 
-my $dictfile = $ENV{SCRABDICT} || "/usr/share/dict/words";
+my @dictfiles = ($ENV{SCRABDICT},
+                 "/com/doc/misc/scrabble/ospd4.txt",
+                 "/export/docs/scrabble/ospd4.txt",
+                 "$ENV{HOME}/tmp/ospd4.txt",
+                 "/usr/share/dict/words"
+                );
 
-my %letter_frequency
-  = ( a =>  9,    k =>  1,    u =>  4,
-      b =>  2,    l =>  4,    v =>  2,
-      c =>  2,    m =>  2,    w =>  2,
-      d =>  4,    n =>  6,    x =>  1,
-      e => 12,    o =>  8,    y =>  2,
-      f =>  2,    p =>  2,    z =>  1,
-      g =>  3,    q =>  1,    _ =>  2,
-      h =>  2,    r =>  6,
-      i =>  9,    s =>  4,
-      j =>  1,    t =>  6, );
+# The frequency tables aren't in use at the moment,
+# but they are a handy reference.
+my %game_rules =
+  ( scrabble => { frequency => { a =>  9,    k =>  1,    u =>  4,
+                                 b =>  2,    l =>  4,    v =>  2,
+                                 c =>  2,    m =>  2,    w =>  2,
+                                 d =>  4,    n =>  6,    x =>  1,
+                                 e => 12,    o =>  8,    y =>  2,
+                                 f =>  2,    p =>  2,    z =>  1,
+                                 g =>  3,    q =>  1,    _ =>  2,
+                                 h =>  2,    r =>  6,
+                                 i =>  9,    s =>  4,
+                                 j =>  1,    t =>  6, },
 
-my %letter_score
-  = ( a =>  1,    k =>  5,    u =>  1,
-      b =>  3,    l =>  1,    v =>  4,
-      c =>  3,    m =>  3,    w =>  4,
-      d =>  2,    n =>  1,    x =>  8,
-      e =>  1,    o =>  1,    y =>  4,
-      f =>  4,    p =>  3,    z => 10,
-      g =>  2,    q => 10,    _ =>  0,
-      h =>  4,    r =>  1,
-      i =>  1,    s =>  1,
-      j =>  8,    t =>  1, );
+                  score     => { a =>  1,    k =>  5,    u =>  1,
+                                 b =>  3,    l =>  1,    v =>  4,
+                                 c =>  3,    m =>  3,    w =>  4,
+                                 d =>  2,    n =>  1,    x =>  8,
+                                 e =>  1,    o =>  1,    y =>  4,
+                                 f =>  4,    p =>  3,    z => 10,
+                                 g =>  2,    q => 10,    _ =>  0,
+                                 h =>  4,    r =>  1,
+                                 i =>  1,    s =>  1,
+                                 j =>  8,    t =>  1, },
+                },
+
+    lexulous => { frequency => { a =>  8,    k =>  1,    u =>  3,
+                                 b =>  2,    l =>  3,    v =>  2,
+                                 c =>  2,    m =>  2,    w =>  2,
+                                 d =>  3,    n =>  5,    x =>  1,
+                                 e => 11,    o =>  7,    y =>  3,
+                                 f =>  2,    p =>  2,    z =>  1,
+                                 g =>  2,    q =>  1,    _ =>  2,
+                                 h =>  2,    r =>  5,
+                                 i =>  8,    s =>  3,
+                                 j =>  1,    t =>  5, },
+
+                  score     => { a =>  1,    k =>  6,    u =>  1,
+                                 b =>  4,    l =>  1,    v =>  5,
+                                 c =>  4,    m =>  4,    w =>  5,
+                                 d =>  2,    n =>  1,    x =>  8,
+                                 e =>  1,    o =>  1,    y =>  5,
+                                 f =>  5,    p =>  4,    z => 12,
+                                 g =>  2,    q => 12,    _ =>  0,
+                                 h =>  5,    r =>  1,
+                                 i =>  1,    s =>  1,
+                                 j =>  8,    t =>  2, },
+                },
+  );
+
+my $opt_rules = $ENV{SCRABRULES} || 'scrabble'; # default rules
+my $opt_dict;
+
+use vars qw(*letter_score);
+local *letter_score;
 
 sub score
 {
@@ -65,12 +106,34 @@ sub subset
   return 1;
 }
 
+sub dictfile
+{
+  return $opt_dict if defined $opt_dict;
+
+  for my $file (@dictfiles)
+    {
+      return $file if (-s $file);
+    }
+}
+
+sub parse_options
+{
+  local *ARGV = \@{$_[0]}; # modify our local arglist, not real ARGV.
+
+  Getopt::Long::config (qw(bundling auto_abbrev require_order));
+  GetOptions ("l|lexulous", sub { $opt_rules = 'lexulous' },
+              "d|dictionary=s", \$opt_dict,
+             );
+}
+
 sub main
 {
+  parse_options (\@_);
+
   my $ifreq = letfreq ($_[0]);
   my @list;
 
-  open (F, $_[2] || $dictfile);
+  open (F, $_[2] || dictfile());
   my %match;
   while (<F>)
     {
@@ -81,6 +144,8 @@ sub main
       my $freq = letfreq ($_);
       $match{lc $_} = 1 if subset ($freq, $ifreq);
     }
+
+  *letter_score = $game_rules{$opt_rules}->{score};
 
   map { printf "%3d  %s\n", score ($_), $_ }
       sort { length $a <=> length $b || $a cmp $b }
