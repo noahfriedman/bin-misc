@@ -1,0 +1,310 @@
+#!/usr/bin/env perl
+# okc-whine --- generate nice guy rants
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2009-04-01
+# Public domain
+
+# $Id$
+
+# Commentary:
+
+# Government agencies are encouraged to integrate this software into
+# weapons control systems and other instruments of destruction.
+
+# Code:
+
+$^W = 1; # enable warnings
+
+package SentenceGenerator;
+use strict;
+
+sub new
+{
+  my $type = shift;
+  my %args = (@_);
+
+  my $class = ref ($type) || $type;
+  bless \%args, $class;
+  return \%args;
+}
+
+sub string
+{
+  my $self = shift;
+  ucfirst ($self->substitute ($_[0] || $self->{start} || "sentence"));
+}
+
+sub substitute
+{
+  my ($self, $category) = @_;
+
+  $category = $1 if $category =~ /^[!*](.*)/;
+
+  my $list = $self->{grammar}->{$category};
+  return $self->iterate_list ($self->random_item ($list)) if $list;
+  return $category;
+}
+
+sub random_item
+{
+  my ($self, $list) = @_;
+  my $n = int (rand (@$list));
+  return $list->[$n];
+}
+
+# Iterate over string STR, replacing all substrings beginning
+# with a '*' or '!'  with a random selection from the appropriate list.
+sub iterate_list
+{
+  my ($self, $str) = @_;
+
+  my @list = $self->split_string ($str);
+  for my $elt (@list)
+    {
+      next if length ($elt) <= 1;
+      my $c = substr ($elt, 0, 1);
+      if ($c eq '*')
+        {
+          $elt = $self->substitute ($elt);
+        }
+      elsif ($c eq '!')
+        {
+          $elt = ucfirst ($self->substitute ($elt));
+        }
+    }
+  join ("", $self->fixup_plurals (@list));
+}
+
+# Tokenize sentence so substitution words are separated.
+# The character `^' can be used to join suffixes to the end of a
+# substitution token, but do not show up in the resulting list.
+# e.g. "Many *word^s with *sub, with 2^32 at *end."
+#      => ("Many " "*word" "s with " "*sub" ", with 2^32 at " "*end" ".")
+sub split_string
+{
+  #my $self = $_[0];
+  local $_ = $_[1];
+  my @list;
+  my $p = 0;
+
+  pos ($_) = $p;
+  while (1)
+    {
+      last unless /([*!][_a-z-]+)/ig;
+      if ($p < pos ($_))
+        {
+          my $stop = pos ($_) - length ($1);
+          push @list, substr ($_, $p, $stop - $p);
+        }
+      push @list, $1;
+      pos ($_) += 1 if (substr ($_, pos ($_), 1) eq '^');
+      $p = pos ($_);
+    }
+  push @list, substr ($_, $p) if $p < length ($_);
+  return @list;
+}
+
+# Rudimentary pluralization correction
+sub fixup_plurals
+{
+  my ($self, @list) = @_;
+
+  for (my $i = 0; $i < (@list - 1); $i++)
+    {
+      next unless substr ($list[$i+1], 0, 1) eq 's';
+      next unless length ($list[$i]) > 2;
+
+      local $_ = $list[$i];
+      if (/y$/)
+        {
+          $list[$i] =~ s/[^ou]y$/ie/;
+        }
+      elsif (/(?:[xs]|ch)$/)
+        {
+          $list[$i] .= 'e';
+        }
+      elsif (/^(?:wo)?man$/) # irregular form
+        {
+          $list[$i] =~ s/an$/en/;
+          $list[$i+1] =~ s/^s//;
+        }
+      elsif (/^person$/) # irregular form
+        {
+          $list[$i] = 'people';
+          $list[$i+1] =~ s/^s//;
+        }
+    }
+  return @list;
+}
+
+# Take a long string and word-wrap it to no more than $width columns
+sub fold
+{
+  my ($self, $string, $width) = @_;
+
+  my @line;
+  local $_ = $string . " ";
+  while (/\G(.{0,$width}\S)\s+/go)
+    {
+      push @line, $1;
+    }
+  join ("\n", @line);
+}
+
+
+package main;
+
+use strict;
+
+my $okc_grammar =
+  { sentence => [ "Why do *generalization?",
+                  "Why do I see so many *person^s complaining about how *generalization, on this site?",
+                  "Can't a *good_adj_person find a *good_adj_person who just wants *want_list?",
+                  "I think *generalization, and *person^s say that they really want *want_list, but *generalization.",
+                  "If you think *generalization, you should see what it's like when someone *mean_verb^s your *an_object and leaves you with nothing but *an_object.",
+                  "See how you like being stuck with *an_object, then you'll really be complaining.  I just think you're all spoiled.",
+                  "Isn't this a dating site?",
+                  "I mean, jeez *person^s!",
+                  "I'm a *good_adj_person!",
+                  "I'm just a *good_adj_person who wants *want_list and I can't find someone who is willing to *action_to me.",
+                  "I'm not trying to *do_something or make anyone *do_something, but people always react as though I'm the *bad_adj one.",
+                  "Why do *person^s always *do_something when I *do_something?",
+                  "Why won't *person^s just *do_something?",
+                  "I don't get why so many people are uptight about *generalization.",
+                  "Why don't you all just pull your *any_object^s out of your *any_objects^s and get over yourself?",
+                  "I just don't think it's fair that all these *person^s on this site should have all the *any_object^s when I'm a *good_adj_person and I can't get a single *person to *action_to me or even *action_to me."
+
+                ],
+
+    generalization => [ "I have a lot of *quality to offer",
+                        "all *person^s want the *person with *want_list",
+                        "everyone is going for the *person with *want_list",
+                        "*person^s say that they really want *want_list",
+                        "*person^s think *want_list is a big deal",
+                      ],
+
+    want_list => [ "*quality",
+                   "a fast *fast_object",
+                   "a huge *sex_object",
+                   "*want_list, or *want_list",         # recursive
+                 ],
+
+
+    good_adj_person => [ "*good_adj *person",
+                         "*sex_pref *gender",
+                         "*good_adj, *good_adj_person", # recursive
+                         "really *good_adj_person",     # recursive
+                  ],
+
+    person => [ "man",
+                "guy",
+                "boy",
+                "jerk",
+
+                "woman",
+                "gal",
+                "girl",
+
+                "ho",
+                "bitch",
+                "slut",
+              ],
+
+    gender => [ "male",
+                "female",
+                "transgendered",
+                "hermaphrodite",
+              ],
+
+    sex_pref => [ "homosexual",
+                  "heterosexual",
+                  "bisexual",
+                  "trisexual",
+                  "asexual",
+                  "transsexual",
+                ],
+
+    an_object => [ "*quality",
+                    "a *fast_object",
+                    "a *sex_object",
+                  ],
+
+    any_object => [ "*fast_object",
+                    "*sex_object",
+                  ],
+
+    quality => [ "a good sense of humor",
+                 "good looks",
+                 "youth",
+                 "lots of money",
+               ],
+
+    fast_object => [ "bike",
+                     "bitchin' Camero",
+                     "Porche",
+                     "Trans Am",
+                     "Ferarri",
+                     "Dodge Dart",
+                   ],
+
+    sex_object => [ "penis",
+                    "vagina",
+                    "sphincter",
+                    "hard disk",
+                  ],
+
+    good_adj => ["nice",
+                 "honest",
+                 "laid-back",
+                 "funny",
+                 "young",
+                ],
+
+    bad_adj => [ "mean",
+                 "fat",
+                 "ugly",
+                 "old",
+               ],
+
+    mean_verb => [ "fucks over",
+                   "pisses on",
+                   "dumps",
+                   "craps on",
+                   "punches",
+                   ],
+
+    action_to => [ "talk to",
+                   "fuck",
+                   "laugh at",
+                   "reply to",
+                   "drink with",
+                   "have dinner with",
+                   "go to the movies with",
+                 ],
+
+    actions_to => [ "talks to",
+                    "fucks",
+                    "laughs at",
+                    "replies to",
+                    "drinks with",
+                    "has dinner with",
+                    "goes to the movies with",
+                  ],
+  };
+
+sub main
+{
+  my $whine = SentenceGenerator->new (grammar => $okc_grammar);
+  my $width = 75;
+  my $count = 5;
+
+  # Generate a screed of $count sentences
+  my $rant = join ("  ", map { $whine->string } (1 .. $count ));
+
+  # word-wrap it and ship it!
+  print $whine->fold ($rant, $width), "\n";
+}
+
+main (@ARGV);
+
+# eof
