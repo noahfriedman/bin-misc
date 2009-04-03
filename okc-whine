@@ -4,7 +4,7 @@
 # Created: 2009-04-01
 # Public domain
 
-# $Id$
+# $Id: okc-whine,v 1.1 2009/04/02 21:15:50 friedman Exp $
 
 # Commentary:
 
@@ -117,7 +117,7 @@ sub fixup_plurals
       local $_ = $list[$i];
       if (/y$/)
         {
-          $list[$i] =~ s/[^ou]y$/ie/;
+          $list[$i] =~ s/([^ou])y$/$1ie/;
         }
       elsif (/(?:[xs]|ch)$/)
         {
@@ -161,31 +161,34 @@ my $okc_grammar =
                   "Why do I see so many *person^s complaining about how *generalization, on this site?",
                   "Can't a *good_adj_person find a *good_adj_person who just wants *want_list?",
                   "I think *generalization, and *person^s say that they really want *want_list, but *generalization.",
-                  "If you think *generalization, you should see what it's like when someone *mean_verb^s your *an_object and leaves you with nothing but *an_object.",
-                  "See how you like being stuck with *an_object, then you'll really be complaining.  I just think you're all spoiled.",
+                  "If you think *generalization, you should see what it's like when someone *mean_actions your *an_object and leaves you with nothing but *an_object.",
+                  "See how you like being stuck with a *an_object, then you'll really be complaining.  I just think you're all spoiled.",
                   "Isn't this a dating site?",
                   "I mean, jeez *person^s!",
-                  "I'm a *good_adj_person!",
-                  "I'm just a *good_adj_person who wants *want_list and I can't find someone who is willing to *action_to me.",
+                  "!ima_niceguy, who wants *want_list and I can't find someone who is willing to *action_to me.",
                   "I'm not trying to *do_something or make anyone *do_something, but people always react as though I'm the *bad_adj one.",
                   "Why do *person^s always *do_something when I *do_something?",
                   "Why won't *person^s just *do_something?",
-                  "I don't get why so many people are uptight about *generalization.",
-                  "Why don't you all just pull your *any_object^s out of your *any_objects^s and get over yourself?",
-                  "I just don't think it's fair that all these *person^s on this site should have all the *any_object^s when I'm a *good_adj_person and I can't get a single *person to *action_to me or even *action_to me."
-
+                  "I don't get why so many people are uptight about how *generalization.",
+                  "Why don't you all just pull your *any_object^s out of your *any_object^s and get over yourself?",
+                  "I just don't think it's fair that *generalization, when *ima_niceguy and I can't get a single *person to *action_to me or even *action_to me.",
                 ],
 
-    generalization => [ "I have a lot of *quality to offer",
-                        "all *person^s want the *person with *want_list",
-                        "everyone is going for the *person with *want_list",
+    generalization => [ "all *person^s want the *person with *want_list",
+                        "everyone goes for the *person with *want_list",
                         "*person^s say that they really want *want_list",
                         "*person^s think *want_list is a big deal",
+                        "all these *person^s on this site should have all the *any_object^s",
                       ],
+
+    ima_niceguy => [ "I have a lot of *quality to offer",
+                     "I'm a *good_adj_person",
+                     "I'm just a *good_adj_person",
+                   ],
 
     want_list => [ "*quality",
                    "a fast *fast_object",
-                   "a huge *sex_object",
+                   "a *sex_adj *sex_object",
                    "*want_list, or *want_list",         # recursive
                  ],
 
@@ -225,18 +228,18 @@ my $okc_grammar =
                 ],
 
     an_object => [ "*quality",
-                    "a *fast_object",
-                    "a *sex_object",
+                    "*fast_object",
+                    "*sex_object",
                   ],
 
     any_object => [ "*fast_object",
                     "*sex_object",
                   ],
 
-    quality => [ "a good sense of humor",
+    quality => [ "good sense of humor",
                  "good looks",
                  "youth",
-                 "lots of money",
+                 "money",
                ],
 
     fast_object => [ "bike",
@@ -253,6 +256,14 @@ my $okc_grammar =
                     "hard disk",
                   ],
 
+    sex_adj => [ "tight",
+                 "loose",
+                 "huge",
+                 "tiny",
+                 "enormous",
+                 "virgin",
+               ],
+
     good_adj => ["nice",
                  "honest",
                  "laid-back",
@@ -266,30 +277,24 @@ my $okc_grammar =
                  "old",
                ],
 
-    mean_verb => [ "fucks over",
-                   "pisses on",
-                   "dumps",
-                   "craps on",
-                   "punches",
-                   ],
+    mean_actions => [ "fucks over",
+                      "pisses on",
+                      "dumps",
+                      "craps on",
+                      "punches",
+                      "abandons",
+                    ],
 
     action_to => [ "talk to",
                    "fuck",
+                   "go down on",
                    "laugh at",
                    "reply to",
                    "drink with",
                    "have dinner with",
                    "go to the movies with",
+                   "write bad checks for",
                  ],
-
-    actions_to => [ "talks to",
-                    "fucks",
-                    "laughs at",
-                    "replies to",
-                    "drinks with",
-                    "has dinner with",
-                    "goes to the movies with",
-                  ],
   };
 
 sub main
