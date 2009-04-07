@@ -1,17 +1,50 @@
 #!/bin/sh
-# $Id$
+# $Id: xutmp,v 1.1 2006/03/21 03:01:46 friedman Exp $
 
-case $1 in
-  on )  cmd=-a ;;
-  off ) cmd=-d ;;
-  * ) echo "Usage: xutmp [on|off]" 1>&2; exit 1 ;;
-esac
+ttyname()
+{
+  tty=`tty 2> /dev/null | sed -e 's=^/dev/=='`
+  case $tty in
+    'not a tty' ) tty=`readlink /proc/self/fd/0 | sed -e 's/[][]//g'` ;;
+  esac
+  echo $tty
+}
 
-tty=`tty 2> /dev/null | sed -e 's=^/dev/=='`
-case $tty in
-  'not a tty' ) tty=`readlink /proc/self/fd/0 | sed -e 's/[][]//g'` ;;
-esac
+call_sessreg()
+{
+  case $1 in
+    on )  cmd=-a ;;
+    off ) cmd=-d ;;
+  esac
 
-exec sessreg $cmd -w none -l "$tty" -h "$DISPLAY" "$USER"
+  tty=`ttyname`
+  exec sessreg $cmd -w none -l "$tty" -h "${DISPLAY-$tty}" "${LOGNAME-$USER}"
+}
+
+call_utempter()
+{
+  case $1 in
+    on )  exec $utempter add "${DISPLAY-`ttyname`}" ;;
+    off ) exec $utempter del ;;
+  esac
+}
+
+main()
+{
+  case $1 in
+    on | off ) : ;;
+    * ) echo "Usage: xutmp [on|off]" 1>&2; exit 1 ;;
+  esac
+
+  fn=call_sessreg
+  utempter=/usr/libexec/utempter/utempter
+  if [ -x $utempter ]; then
+    fn=call_utempter
+  fi
+
+  $fn $1
+}
+
+main "$@"
 
 # eof
