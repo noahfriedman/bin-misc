@@ -4,7 +4,7 @@
 # Created: 2009-04-01
 # Public domain
 
-# $Id: okc-whine,v 1.1 2009/04/02 21:15:50 friedman Exp $
+# $Id: okc-whine,v 1.2 2009/04/03 01:00:58 friedman Exp $
 
 # Commentary:
 
@@ -172,9 +172,13 @@ my $okc_grammar =
                   "I don't get why so many people are uptight about how *generalization.",
                   "Why don't you all just pull your *any_object^s out of your *any_object^s and get over yourself?",
                   "I just don't think it's fair that *generalization, when *ima_niceguy and I can't get a single *person to *action_to me or even *action_to me.",
+                  "Is it too much to expect that *generalization",
+                  "I think all *any_adj *person^s should *action_to me.  It's only polite.",
+                  "When I *do_something, *any_adj *person^s should *action_to me.",
                 ],
 
-    generalization => [ "all *person^s want the *person with *want_list",
+    generalization => [ "*person^s never write back",
+                        "all *person^s want the *person with *want_list",
                         "everyone goes for the *person with *want_list",
                         "*person^s say that they really want *want_list",
                         "*person^s think *want_list is a big deal",
@@ -277,12 +281,18 @@ my $okc_grammar =
                  "old",
                ],
 
+    any_adj => [ "*bad_adj",
+                 "*good_adj",
+                 "*sex_adj",
+               ],
+
     mean_actions => [ "fucks over",
                       "pisses on",
                       "dumps",
                       "craps on",
                       "punches",
                       "abandons",
+                      "attacks",
                     ],
 
     action_to => [ "talk to",
@@ -294,7 +304,25 @@ my $okc_grammar =
                    "have dinner with",
                    "go to the movies with",
                    "write bad checks for",
+                   "write back to",
                  ],
+
+    do_verb => [ "attack",
+                 "cruise",
+                 "cheat on",
+                 "insult",
+                 "stalk",
+                 "message",
+                 "woo",
+                 "wink",
+                 "proposition",
+                 "talk dirty to",
+               ],
+
+    do_something => [ "*do_verb *bad_adj *person^s",
+                      "*do_verb *sex_pref *person^s",
+                      "*do_verb *any_adj *person^s",
+                    ],
   };
 
 sub main
