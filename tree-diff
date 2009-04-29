@@ -4,12 +4,13 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.5 2007/04/09 01:56:13 friedman Exp $
+# $Id: tree-diff,v 1.6 2008/01/09 20:45:47 friedman Exp $
 
 exclude_pats=${EXCLUDE_PATS-'
     CVS
     RCS
     {arch}
+    .git
     .svn
     _MTN
 
