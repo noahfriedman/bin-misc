@@ -4,7 +4,7 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.6 2008/01/09 20:45:47 friedman Exp $
+# $Id: tree-diff,v 1.7 2009/04/29 20:28:57 friedman Exp $
 
 exclude_pats=${EXCLUDE_PATS-'
     CVS
@@ -32,6 +32,7 @@ exclude_pats=${EXCLUDE_PATS-'
     *.obj
     *.so
     lib*.so.*
+    *.dylib
     *.elc
     *.class
     *.dvi
