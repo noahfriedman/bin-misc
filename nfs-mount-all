@@ -1,4 +1,0 @@
-#!/bin/sh
-# $Id: nfs-mount-all,v 1.2 2005/12/02 18:06:25 friedman Exp $
-
-awk '$3 ~ /^nfs4?$/ { print "${MOUNT-mount}", $2 }' /etc/fstab | sh -x

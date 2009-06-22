@@ -1,4 +1,0 @@
-#!/bin/sh
-# $Id$
-host=${1-`hostname`}
-xauth add $host:999 . b1ff15ac001d00d1
