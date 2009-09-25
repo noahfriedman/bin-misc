@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+
+my $user=$ENV{LJUSER};
+my $pass=$ENV{LJPASS};
+my $login_url = 'http://www.livejournal.com/login.bml';
+my $feed_url = "http://$user.livejournal.com/data/customview?styleid=670763&checkcookies=1";
+
+use LWP::UserAgent;
+use HTTP::Cookies;
+use HTML::Form;
+use Digest::MD5 qw(md5_hex);
+
+my $browser = LWP::UserAgent->new();
+my $cookies = HTTP::Cookies->new();
+$browser->cookie_jar( $cookies );
+
+my $response = $browser->get( $login_url );
+exit 1 unless $response->is_success;
+
+my @forms = HTML::Form->parse($response->content, $response->base);
+@forms = grep { defined($_->action) && $_->action eq $login_url } @forms;
+exit 1 unless @forms;
+
+my $login_form = shift @forms;
+
+$login_form->value('user', $user);
+$login_form->value('response', md5_hex($login_form->value('chal'),
+                                       md5_hex($pass)));
+$response = $browser->request($login_form->click);
+exit 1 if $response->is_error;
+
+$response = $browser->get( $feed_url );
+$response = $browser->get( $feed_url ) unless $response->is_success;
+
+print $response->content;
+
+# eof
