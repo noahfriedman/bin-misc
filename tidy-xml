@@ -1,0 +1,24 @@
+#!/bin/sh
+# $Id$
+
+exec tidy \
+       --quiet			yes 	\
+       --gnu-emacs		yes 	\
+       --keep-time		no 	\
+       --write-back		no 	\
+       					\
+       --input-xml		yes 	\
+       --output-xml		yes	\
+       --add-xml-decl		yes	\
+				        \
+       --indent			yes 	\
+       --indent-attributes	yes 	\
+       --indent-spaces		4 	\
+       --sort-attributes	alpha	\
+					\
+       --wrap			160 	\
+       --wrap-attributes	no 	\
+       --wrap-script-literals	no 	\
+       					\
+       --vertical-space		yes 	\
+       ${1+"$@"}
