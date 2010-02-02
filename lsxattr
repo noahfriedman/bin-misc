@@ -1,0 +1,36 @@
+#!/bin/sh
+# $Id$
+
+case `uname -s` in
+  Linux )
+    # Note: security.capability values can be decoded
+    # with the `getcap' program.
+    exec getfattr --encoding=text \
+                  --match '^.*'  \
+                  --dump \
+                  --absolute-names \
+                  "$@"
+    ;;
+
+  FreeBSD | NetBSD )
+    # Mimic the linux output as best we can.
+    # Because lsextattr prints multiple attributes on a line, we may fail
+    # to look up ones with embedded whitespace in them.  Don't do that.
+    for file in "$@" ; do
+      echo "# file: $file"
+      for namespace in system user; do
+        for attr in `lsextattr -q $namespace "$file"`; do
+          value=`getextattr -qs $namespace $attr "$file"`
+          if [ $? -ne 0 ]; then
+            echo "$file: $namespace.$attr: could not get attribute value." 1>&2
+            continue
+          fi
+          echo "$namespace.$attr=$value"
+        done
+      done
+      echo
+    done
+    ;;
+esac
+
+# eof
