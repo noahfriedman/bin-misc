@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: lsxattr,v 1.1 2010/02/02 22:17:05 friedman Exp $
 
 case `uname -s` in
   Linux )
@@ -9,6 +9,8 @@ case `uname -s` in
                   --match '^.*'  \
                   --dump \
                   --absolute-names \
+                  --no-dereference \
+                  --physical \
                   "$@"
     ;;
 
