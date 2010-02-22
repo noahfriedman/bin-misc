@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id$
+# $Id: mkill,v 1.1 2010/02/22 10:46:34 friedman Exp $
 
 fixup_pattern()
 {
@@ -8,7 +8,7 @@ fixup_pattern()
 
   case ${arg[$last]} in
     *[][*^/]* ) : ;;
-    *         ) arg[$last]="^[^ ]*${arg[$last]}" ;;
+    *         ) arg[$last]="^([^ ]*/|)${arg[$last]}(\$| )" ;;
   esac
 }
 
