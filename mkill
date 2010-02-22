@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# $Id$
+
+fixup_pattern()
+{
+  arg=("$@")
+  declare -i last=${#arg[@]}-1
+
+  case ${arg[$last]} in
+    *[][*^/]* ) : ;;
+    *         ) arg[$last]="^[^ ]*${arg[$last]}" ;;
+  esac
+}
+
+main()
+{
+  signal=
+  case $1 in
+    -* ) signal=$1 ; shift ;;
+  esac
+
+  uid=${UID-`id -u`}
+  case $uid in
+    0 ) : ;;
+    * ) set fnord -u $uid "$@" ; shift ;;
+  esac
+
+  fixup_pattern "$@"
+  set fnord "${arg[@]}"
+  shift
+
+  pgrep -fl "$@"
+  pkill $signal -f "$@"
+}
+
+main "$@"
+
+# eof
