@@ -1,0 +1,105 @@
+#!/usr/bin/env perl
+# $Id$
+
+use strict;
+use Symbol;
+
+my @header = qw(keysymdef.h
+                HPkeysym.h
+                DECkeysym.h
+                Sunkeysym.h
+                XF86keysym.h);
+
+my @include = qw(/usr/include/X11
+                 /usr/X11R6/include/X11
+                 /usr/local/include/X11);
+
+sub parse
+{
+  my ($fh, $tbl) = @_;
+  my %collide;
+
+  while (<$fh>)
+    {
+      if (m=^#define\s+(XF86|hp|Sun|D|)XK_([\da-z_]+)\s+0x([\da-f]+)\s*(?:/\*\s*\(?(.*?)\)?\s*\*/|(.*))=i)
+        {
+          $tbl->{$1 . $2} = { keycode => $3,
+                              desc    => $4,
+                            };
+        }
+    }
+}
+
+sub sort_keysyms_pred
+{
+  my ($tbl, $a, $b) = @_;
+
+  my $tlen = 4;  # trivial length
+  my $alen = length ($a);
+  my $blen = length ($b);
+
+  my $comb = "$a\0$b";
+  if ($comb =~ /^([^\d]+?)(\d+)\0([^\d]+?)(\d+)$/)
+    {
+      $1 cmp $3 || $2 <=> $4
+    }
+  elsif ($comb =~ /^(.{3,})(.*?)\0\1(.*)$/)
+    {
+      #print STDERR "\$1 = \"$1\"; \$2 = \"$2\"; \$3 = \"$3\"\n";
+      $2 cmp $3
+    }
+  else
+    {
+      ((hex ($tbl->{$a}->{keycode}) <=> hex ($tbl->{$b}->{keycode}))
+       || (lc ($a) cmp lc ($b))
+       || ($a cmp $b))
+    }
+}
+
+sub display
+{
+  my ($tbl) = @_;
+
+  for my $sym (sort { sort_keysyms_pred ($tbl, $a, $b) } keys %$tbl)
+    {
+      my $elt = $tbl->{$sym};
+      if ($elt->{desc})
+        {
+          printf ("%-30s\t:%-8s\t! %s\n", $sym, uc ($elt->{keycode}), $elt->{desc});
+        }
+      else
+        {
+          printf ("%-30s\t:%s\n", $sym, uc ($elt->{keycode}));
+        }
+    }
+}
+
+sub open_header
+{
+  my $header = shift;
+  my $fh = gensym;
+
+  for my $dir (@include)
+    {
+      open ($fh, "$dir/$header") && return $fh;
+    }
+  return;
+}
+
+sub main
+{
+  my %tbl;
+
+  for my $header (@header)
+    {
+      my $fh = open_header ($header);
+      next unless $fh;
+      parse ($fh, \%tbl);
+    }
+
+  display (\%tbl);
+}
+
+main (@ARGV);
+
+# eof
