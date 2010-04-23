@@ -1,0 +1,9 @@
+#!/bin/sh
+# $Id$
+
+RDESKTOP_GEOM=`xrdb-symbol-value WIDTH HEIGHT | sed -ne '1h;2H;$x;$s/\n/x/;$p'`
+export RDESKTOP_GEOM
+
+exec mrdesktop -T notitle "$@"
+
+# eof
