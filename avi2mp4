@@ -1,0 +1,31 @@
+#!/bin/sh
+# $Id$
+
+# Todo: handle re-encoding when video format is not mp4/divx already.
+# Currently this just changes the container format.
+
+avi2mp4_copy()
+{
+  mencoder \
+      -msglevel mencoder=6:muxer=6:header=6:statusline=4 \
+      -msgmodule \
+      -forceidx \
+      -noskip \
+      -oac copy \
+      -ovc copy \
+      -of lavf \
+      -lavfopts 'format=mp4' \
+      "$1" -o "$2"
+}
+
+main()
+{
+  for avi in "$@"; do
+    mp4=${avi%.avi}.mp4
+    avi2mp4_copy "$avi" "$mp4"
+  done
+}
+
+main "$@"
+
+# eof
