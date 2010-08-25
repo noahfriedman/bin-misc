@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.1 2007/01/11 00:36:32 friedman Exp $
+# $Id: mkpem,v 1.2 2007/01/11 05:47:05 friedman Exp $
 
 # Commentary:
 
-# Example config.dn:
+# Example config.dn for an SSL server certificate:
 #
 #     C            = US
 #     ST           = California
 #     L            = San Francisco
 #     O            = Nocturnal Aviation, Inc.
 #     CN           = hostname.domainname
-#     emailAddress = georgebush@whitehouse.gov
+#
+# Order is least significant to most significant!
+# Usually you want to list C first and CN last.
 
 # Code:
 
@@ -63,30 +65,47 @@ mkpem()
 
   {
     echo "[ req ]"
-    echo RANDFILE               = /dev/urandom
-    echo distinguished_name     = req_dn
-    echo prompt                 = no
-    echo x509_extensions        = v3_ca
+    echo RANDFILE                = /dev/urandom
+    echo prompt                  = no
+    echo x509_extensions         = v3_ca
+    echo distinguished_name      = req_dn
+
     echo
     echo "[ v3_ca ]"
-    echo subjectKeyIdentifier   = hash
-    echo authorityKeyIdentifier = keyid:always,issuer:always
-    #echo basicConstraints      = CA:true
-    #echo nsCertType            = critical, sslCA, emailCA, client, server, email, objsign
-    echo basicConstraints       = CA:false
-    echo nsCertType             = server
+    echo  subjectKeyIdentifier   = hash
+    #echo authorityKeyIdentifier = keyid:always,issuer:always
+
+    # Critical means cert should be rejected when used for purposes other
+    # than those indicated in this extension.
+    #
+    #echo basicConstraints       = critical, CA:true, pathlen:0
+    echo  basicConstraints       = critical, CA:false
+
+    #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
+    echo keyUsage                = critical, keyEncipherment
+
+    #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
+    echo  extendedKeyUsage       = critical, serverAuth
+
+    # Don't use nsCertType; deprecated.
+    #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
+    #echo nsCertType             = critical, server
+
+    #echo subjectAltName         = email:foo@company.com, email:bar@company.com
+    #echo subjectAltName         = DNS:foo.company.com, DNS:bar.company.com
+
     echo
     echo "[ req_dn ]"
     while read l; do echo "$l" ; done < $config
   } | openssl req \
-        -config     /dev/stdin     \
-        -newkey     rsa:1024       \
-        -x509                      \
-        -sha1                      \
-        -nodes                     \
-        -days       $(( 365 * 5 )) \
-        -keyout     "$pem"         \
-        -out        "$pem"         \
+        -config     /dev/stdin      \
+        -newkey     rsa:1024        \
+        -x509                       \
+        -sha1                       \
+        -nodes                      \
+        -days       $(( 365 * 10 )) \
+        -keyout     "$pem"          \
+        -out        "$pem"          \
         "$@"
 
   { echo
