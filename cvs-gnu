@@ -1,6 +1,0 @@
-#! /bin/sh
-# $Id: cvs-gnu,v 1.4 2000/08/07 10:38:51 friedman Exp $
-
-CVSROOT=:pserver:friedman@cvs.gnu.org:/gd/gnu/cvsroot
-
-exec ${CVS-cvs} ${1+"$@"}
