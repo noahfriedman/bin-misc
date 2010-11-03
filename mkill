@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkill,v 1.1 2010/02/22 10:46:34 friedman Exp $
+# $Id: mkill,v 1.2 2010/02/22 10:53:00 friedman Exp $
 
 fixup_pattern()
 {
@@ -14,9 +14,16 @@ fixup_pattern()
 
 main()
 {
+  case ' '$*' ' in
+    *' -v '* )
+      exec 1>&2
+      echo "The \`-v' flag doesn't do what you think it does.  Don't use it."
+      exit 1 ;;
+  esac
+
   signal=
   case $1 in
-    -* ) signal=$1 ; shift ;;
+    -[0-9]* | -???* ) signal=$1 ; shift ;;
   esac
 
   uid=${UID-`id -u`}
