@@ -1,0 +1,6 @@
+#!/bin/sh
+# $Id$
+
+# Talk to apcupsd daemon
+
+printf "\0\6status" | nc ${1-localhost} 3551 | sed -e 's/^..//'
