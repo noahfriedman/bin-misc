@@ -4,7 +4,7 @@
 # Created: 2005-05-12
 # Public domain
 
-# $Id: cyrus-deliver,v 1.5 2006/04/01 00:54:55 friedman Exp $
+# $Id: cyrus-deliver,v 1.6 2006/05/16 22:57:35 friedman Exp $
 
 # Commentary:
 
@@ -74,8 +74,7 @@ do_delivery()
    | {
        if [ -g $libdir/deliver-wrapper ]; then
          case $# in
-           0 ) set "user.$USER"    ;;
-           1 ) set "user.$USER.$1" ;;
+           0 ) set INBOX    ;;
          esac
 
          $libdir/deliver-wrapper "$1"
