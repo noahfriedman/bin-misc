@@ -1,11 +1,12 @@
 #!/bin/sh
-# $Id: dvd2ipod,v 1.1 2008/02/28 19:38:03 friedman Exp $
+# $Id: dvd2ipod,v 1.2 2010/04/15 08:49:56 friedman Exp $
 
 exec HandBrakeCLI \
-    -Z "iPod" \
-    -2 \
-    -T \
-    -m \
+    --preset     "iPhone & iPod Touch" \
+    --two-pass \
+    --turbo \
+    --markers \
+    --ipod-atom \
     "$@"
 
 # eof
