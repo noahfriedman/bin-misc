@@ -1,12 +1,13 @@
 #!/usr/bin/env perl
-# $Id$
+# $Id: mk-XKeysymDB,v 1.1 2010/04/23 04:44:09 friedman Exp $
 
 use strict;
 use Symbol;
 
 my @header = qw(keysymdef.h
-                HPkeysym.h
+                ap_keysym.h
                 DECkeysym.h
+                HPkeysym.h
                 Sunkeysym.h
                 XF86keysym.h);
 
@@ -21,7 +22,7 @@ sub parse
 
   while (<$fh>)
     {
-      if (m=^#define\s+(XF86|hp|Sun|D|)XK_([\da-z_]+)\s+0x([\da-f]+)\s*(?:/\*\s*\(?(.*?)\)?\s*\*/|(.*))=i)
+      if (m=^#define\s+(.*)XK_([\da-z_]+)\s+0x([\da-f]+)\s*(?:/\*\s*\(?(.*?)\)?\s*\*/|(.*))=i)
         {
           $tbl->{$1 . $2} = { keycode => $3,
                               desc    => $4,
@@ -34,26 +35,9 @@ sub sort_keysyms_pred
 {
   my ($tbl, $a, $b) = @_;
 
-  my $tlen = 4;  # trivial length
-  my $alen = length ($a);
-  my $blen = length ($b);
-
-  my $comb = "$a\0$b";
-  if ($comb =~ /^([^\d]+?)(\d+)\0([^\d]+?)(\d+)$/)
-    {
-      $1 cmp $3 || $2 <=> $4
-    }
-  elsif ($comb =~ /^(.{3,})(.*?)\0\1(.*)$/)
-    {
-      #print STDERR "\$1 = \"$1\"; \$2 = \"$2\"; \$3 = \"$3\"\n";
-      $2 cmp $3
-    }
-  else
-    {
-      ((hex ($tbl->{$a}->{keycode}) <=> hex ($tbl->{$b}->{keycode}))
-       || (lc ($a) cmp lc ($b))
-       || ($a cmp $b))
-    }
+  ((hex ($tbl->{$a}->{keycode}) <=> hex ($tbl->{$b}->{keycode}))
+   || (lc ($a) cmp lc ($b))
+   || ($a cmp $b));
 }
 
 sub display
