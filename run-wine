@@ -1,0 +1,20 @@
+#!/bin/sh
+# $Id$
+
+cd $HOME/etc/misc/.wine/dosdevices/c: || exit $?
+
+prg=$1
+shift
+
+for dir in "Program Files (x86)" "Program Files"
+do
+    if [ -f "$dir/$prg" ]; then
+        exec run-misc.sh ${WINE-wine} "C:/$dir/$prg" "$@"
+        exit $?
+    fi
+done
+
+echo "${0##*/}: Cannot find $prg" 1>&2
+exit 1
+
+# eof
