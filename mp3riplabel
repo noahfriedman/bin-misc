@@ -1,148 +1,192 @@
-#! /bin/bash
-# $Id: mp3riplabel,v 1.12 2007/04/09 01:56:01 friedman Exp $
+#!/usr/bin/env bash
+# $Id: mp3riplabel,v 1.13 2007/07/21 18:08:03 friedman Exp $
 
-file-template ()
+# Requires python-eyed3 fedora rpm
+
+file_template()
 {
-  tmpl_author=`filter "$author"`
-  tmpl_album=`filter "$album"`
+    file_author=`file_filter "$author"`
+     file_album=`file_filter "$album"`
 
-  for f in "$tmpl_author.$tmpl_album"?"$1."*".mp3" \
-           "$file_author.$file_album"?"$1."*".mp3" \
-           "$file_author.$tmpl_album"?"$1."*".mp3" \
-           "track$1.cdda.mp3" \
-           "track_$1.mp3" \
-           "$1-"*.mp3 \
-           "$1 -"*.mp3 \
-           *".$1."*.mp3 \
-           *"-$1-"*.mp3 \
-           *"_$1_"*.mp3 \
-           *" - $1 - "*.mp3
-  do
-    if [ -f "$f" ]; then
-      echo "$f"
-      return
-    fi
-  done
+    for f in \
+        $file_author.$file_album?$1.*.mp3 \
+        track$1.*.mp3 \
+        track_$1.mp3 \
+        $1-*.mp3 \
+        $1.*.mp3 \
+        "$1 "*.mp3 \
+        *" - $1 - "*.mp3 \
+        *.$1.*.mp3 \
+        *-$1-*.mp3 \
+        *_$1_*.mp3 \
+        *" $1 "*.mp3
+    do
+        if [ -f "$f" ]; then
+            echo "$f"
+            return
+        fi
+    done
 }
 
-acronymize ()
+file_filter()
 {
-  case "$*" in
-    *" "* | *-* )
-      echo "$*" \
-         | sed -e "s/^/ /" \
-               -e "s/ *\([^ ]\)[^ ]*/\1/g" \
-               -e "y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/"
-     ;;
-    * ) echo "$*" ;;
-  esac
+    echo "$*" \
+        | sed -e "s/  *$//" \
+              -e "s=/=_=g"
 }
 
-filter ()
+eyed3()
 {
-  echo "$*" \
-   | sed -e "s/  / /g" \
-         -e "s/ $//" \
-         -e "s/^(//" \
-         -e "s/&/and/g" \
-         -e "y/[(_ /----/" \
-         -e "s/[]):.,'!?]//g"
+    set eyeD3 --no-tagging-time-frame ${1+"$@"}
+    case $VERBOSE in
+        '' ) "$@" ;;
+        *  ) (set -x; "$@") ;;
+    esac
 }
 
-label ()
+label()
 {
-  track="$1"
-  file=`file-template "$1"`
-  title="$2"
-  comment="${3-$defcomment}"
+    track=$1
+    title=$2
+    shift; shift
 
-  touch -r "$file" .stamp
+    comment=$defcomment
+    comment_empty=
+    case ${1+isset}:$1 in
+        isset:-* | : ) : ;;
+        isset:   )
+            comment=
+            comment_empty=t
+            shift ;;
+        isset:?* )
+            comment=$1
+            shift ;;
+    esac
+    case $comment_empty:$comment in
+        t: | :?* )
+            set fnord --comment=::"$comment" ${1+"$@"}
+            shift ;;
+    esac
 
-  #mp3info -W "$file"
-  #mp3info -t "$title" \
-  #        -l "$album" \
-  #        -a "$author" \
-  #        -c "$comment" \
-  #        -y "$year" \
-  #        -g "$genre" \
-  #  "$file"
+    file=`file_template "$track"`
+    touch -r "$file" .stamp
 
-  id3v2 -D "$file"
+    echo ----------------------------------------
+    echo "$file"
+    {
+        case $reset_tags in
+            '' ) : ;;
+            *  ) (
+                    set fnord
+                    for tag in $reset_tags ; do
+                        case $tag in
+                            TXXX:* ) set "$@" --set-user-text-frame ${tag#TXXX:}: ;;
+                            *      ) set "$@" --set-text-frame $tag: ;;
+                        esac
+                    done
+                    shift
+                    eyed3 "$@" "$file"
+                ) ;;
+        esac
 
-#         --comment "$comment"      \
-  id3tag  --artist  "$author"       \
-          --album   "$album"        \
-          --track   "$track"        \
-          --total   "$total_tracks" \
-          --song    "$title"        \
-          --year    "$year"         \
-          --genre   "$genre"        \
-    "$file"
+        eyed3 \
+            --set-encoding utf16-LE        \
+            --to-v2.3                      \
+            --artist       "$author"       \
+            --album        "$album"        \
+            --disc         "$disc"         \
+            --disc-total   "$disc_total"   \
+            --track        "$track"        \
+            --track-total  "$track_total"  \
+            --title        "$title"        \
+            --year         "$year"         \
+            --genre        "$genre"        \
+            ${1+"$@"} \
+            "$file"
+    } > /dev/null
 
-  touch -r .stamp "$file"
-  rm -f .stamp
+    touch -r .stamp "$file"
+    rm -f .stamp
 }
 
-rename ()
+discstr()
 {
-  old=`file-template "$1"`
-  title="$2"
-  comment="${3-$defcomment}"
-
-  #new=`filter "$title" "$comment"`
-  #new="$file_author.$file_album.$1.$new.mp3"
-  new=`echo $title $comment`
-  new="$author - $album - $1 - $new.mp3"
-
-  case "$new" in
-    "$old" ) : ;;
-    * ) mv -v "$old" "$new" ;;
-  esac
+    discstr=
+    case $disc:$disc_total in
+        : | 1:1 ) : ;;
+        *:  ) echo   " (disc $disc)" ;;
+        *:* ) printf " (disc %0${#disc_total}d of %d)" $disc $disc_total ;;
+    esac
 }
 
-init ()
+rename_eyeD3()
 {
-              ##############################
-      author=''
-       album=''
-  defcomment=' '
+    track=$1
+    old=`file_template "$track"`
 
-  year=
-  genre=
-  total_tracks=
+    fmt="%A - %a`discstr` - %n - %t"
 
-  # Alternatively, use `acronymize'
-  file_author=`filter "$author"`
-  file_album=`filter "$album"`
+    echo ----------------------------------------
+    echo "$old"
+    {
+        eyed3 -v \
+            --rename      "$fmt" \
+            --fs-encoding "utf8" \
+            "$old"
+    } > /dev/null
 }
 
-doit ()
+rename()
 {
-         ##############################   ##############################
-  $1 01 "Example Title"                  "Example Comment"
-  $1 02 "Example Title"                  "Example Comment"
-  $1 03 "Example Title"                  "Example Comment"
-  $1 04 "Example Title"                  "Example Comment"
-  $1 05 "Example Title"                  "Example Comment"
-  $1 06 "Example Title"                  "Example Comment"
-  $1 07 "Example Title"                  "Example Comment"
-  $1 08 "Example Title"                  "Example Comment"
-  $1 09 "Example Title"                  "Example Comment"
-  $1 10 "Example Title"                  "Example Comment"
-  $1 11 "Example Title"                  "Example Comment"
-  $1 12 "Example Title"                  "Example Comment"
-  $1 13 "Example Title"                  "Example Comment"
-  $1 14 "Example Title"                  "Example Comment"
-  $1 15 "Example Title"                  "Example Comment"
-  $1 16 "Example Title"                  "Example Comment"
-  $1 17 "Example Title"                  "Example Comment"
-  $1 18 "Example Title"                  "Example Comment"
-  $1 19 "Example Title"                  "Example Comment"
-  $1 20 "Example Title"                  "Example Comment"
+    track=$1
+    title=$2
+
+    albumstr=$album`discstr`
+
+    old=`file_template "$track"`
+    new=`file_filter "$author - $albumstr - $track - $title.mp3"`
+
+    case $new in
+        $old ) : ;;
+        *    ) mv -v "$old" "$new" ;;
+    esac
 }
 
-init
-doit label
-doit rename
+config()
+{
+                ##############################
+        author=''
+         album=''
+
+          year=
+         genre=
+    defcomment=
+
+   track_total=
+
+          disc=
+    disc_total=
+
+    # These are useful if you want to get rid of the track total or disc
+    # total, which will not be removed if it already exists, even if the
+    # explicit replacement is empty.
+    reset_tags= #'TPOS TRCK'
+}
+
+doit()
+{ :
+           ##############################
+   #$1 01 "Example Title"
+}
+
+main()
+{
+    config
+    doit label
+    doit rename
+}
+
+eyeD3 --version > /dev/null || exit $?
+#main "$@"
 
 # eof
