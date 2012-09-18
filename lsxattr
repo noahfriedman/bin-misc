@@ -1,38 +1,49 @@
 #!/bin/sh
-# $Id: lsxattr,v 1.1 2010/02/02 22:17:05 friedman Exp $
+# $Id: lsxattr,v 1.2 2010/02/09 18:41:12 friedman Exp $
 
 case `uname -s` in
-  Linux )
-    # Note: security.capability values can be decoded
-    # with the `getcap' program.
-    exec getfattr --encoding=text \
-                  --match '^.*'  \
-                  --dump \
-                  --absolute-names \
-                  --no-dereference \
-                  --physical \
-                  "$@"
-    ;;
+    Linux )
+        # Note: security.capability values can be decoded
+        # with the `getcap' program.
+        exec getfattr --encoding=text \
+            --match '^.*'  \
+            --dump \
+            --absolute-names \
+            --no-dereference \
+            --physical \
+            "$@"
+        ;;
 
-  FreeBSD | NetBSD )
-    # Mimic the linux output as best we can.
-    # Because lsextattr prints multiple attributes on a line, we may fail
-    # to look up ones with embedded whitespace in them.  Don't do that.
-    for file in "$@" ; do
-      echo "# file: $file"
-      for namespace in system user; do
-        for attr in `lsextattr -q $namespace "$file"`; do
-          value=`getextattr -qs $namespace $attr "$file"`
-          if [ $? -ne 0 ]; then
-            echo "$file: $namespace.$attr: could not get attribute value." 1>&2
-            continue
-          fi
-          echo "$namespace.$attr=$value"
+    FreeBSD | NetBSD )
+        # Mimic the linux output as best we can.
+        # Because lsextattr prints multiple attributes on a line, we may fail
+        # to look up ones with embedded whitespace in them.  Don't do that.
+        for file in "$@" ; do
+            echo "# file: $file"
+            for namespace in system user; do
+                for attr in `lsextattr -q $namespace "$file"`; do
+                    value=`getextattr -qs $namespace $attr "$file"`
+                    if [ $? -ne 0 ]; then
+                        echo "$file: $namespace.$attr: could not get attribute value." 1>&2
+                        continue
+                    fi
+                    echo "$namespace.$attr=$value"
+                done
+            done
+            echo
         done
-      done
-      echo
-    done
-    ;;
+        ;;
+
+    Darwin )
+        for file in "$@" ; do
+            echo "# file: $file"
+            xattr "$file" |
+            while read attr; do
+                echo "$attr="\"`xattr -p "$attr" "$file"`\"
+            done
+        done
+        ;;
+
 esac
 
 # eof
