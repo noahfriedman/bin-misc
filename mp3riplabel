@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.15 2012/09/07 02:03:39 friedman Exp $
+# $Id: mp3riplabel,v 1.16 2012/10/11 06:30:16 friedman Exp $
 
 # Requires python-eyed3 fedora rpm for mp3 files
 # Requires metaflac for flac files
@@ -116,8 +116,11 @@ rename_mp3()
 
 info_flac()
 {
-    echo "$1:"
-    metaflac --export-tags-to - "$1"
+    track=$1
+    file=`file_template "$track"`
+
+    echo "$file:"
+    metaflac --export-tags-to - "$file"
     echo
 }
 
@@ -279,9 +282,14 @@ main()
         flac ) metaflac --version > /dev/null || exit $? ;;
     esac
 
-    doit  label
-    doit  rename
-    #doit info
+    case $# in
+        0 ) set label rename ;;
+    esac
+
+    set -e
+    for step in "$@"; do
+        doit $step
+    done
 }
 
 #main "$@"
