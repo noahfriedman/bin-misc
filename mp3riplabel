@@ -1,39 +1,12 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.14 2012/09/07 01:58:30 friedman Exp $
+# $Id: mp3riplabel,v 1.15 2012/09/07 02:03:39 friedman Exp $
 
-# Requires python-eyed3 fedora rpm
+# Requires python-eyed3 fedora rpm for mp3 files
+# Requires metaflac for flac files
 
-file_template()
-{
-    file_author=`file_filter "$author"`
-     file_album=`file_filter "$album"`
-
-    for f in \
-        $file_author.$file_album?$1.*.mp3 \
-        track$1.*.mp3 \
-        track_$1.mp3 \
-        $1-*.mp3 \
-        $1.*.mp3 \
-        "$1 "*.mp3 \
-        *" - $1 - "*.mp3 \
-        *.$1.*.mp3 \
-        *-$1-*.mp3 \
-        *_$1_*.mp3 \
-        *" $1 "*.mp3
-    do
-        if [ -f "$f" ]; then
-            echo "$f"
-            return
-        fi
-    done
-}
-
-file_filter()
-{
-    echo "$*" \
-        | sed -e "s/  *$//" \
-              -e "s=/=_=g"
-}
+######
+## mp3
+######
 
 eyed3()
 {
@@ -44,7 +17,7 @@ eyed3()
     esac
 }
 
-info()
+info_mp3()
 {
     track=$1
     file=`file_template "$track"`
@@ -55,7 +28,7 @@ info()
     eyeD3 --lametag "$file"
 }
 
-label()
+label_mp3()
 {
     track=$1
     title=$2
@@ -120,17 +93,7 @@ label()
     rm -f .stamp
 }
 
-discstr()
-{
-    discstr=
-    case $disc:$disc_total in
-        : | 1:1 ) : ;;
-        *:  ) echo   " (disc $disc)" ;;
-        *:* ) printf " (disc %0${#disc_total}d of %d)" $disc $disc_total ;;
-    esac
-}
-
-rename_eyeD3()
+rename_mp3()
 {
     track=$1
     old=`file_template "$track"`
@@ -147,7 +110,110 @@ rename_eyeD3()
     } > /dev/null
 }
 
-rename()
+######
+## flac
+######
+
+info_flac()
+{
+    echo "$1:"
+    metaflac --export-tags-to - "$1"
+    echo
+}
+
+label_flac()
+{
+    track=$1
+    title=$2
+    shift; shift
+
+    file=`file_template "$track"`
+
+    set fnord "$@"
+
+    for tag in $reset_tags ; do
+        set "$@" --remove-tag=$tag
+    done
+
+    for comment in   "ARTIST=$author"       \
+                      "ALBUM=$album"        \
+                      "TITLE=$title"        \
+                       "DATE=$year"         \
+                      "GENRE=$genre"        \
+                "TRACKNUMBER=$track"        \
+                 "TRACKTOTAL=$track_total"  \
+                 "DISCNUMBER=$disc"         \
+                  "DISCTOTAL=$disc_total"
+    do
+         tag=${comment%%=*}
+        data=${comment#*=}
+
+        case $data in
+            "" ) : ;;
+            *  ) set "$@" --remove-tag "$tag" --set-tag "$comment" ;;
+        esac
+    done
+
+    shift
+
+    echo "Tagging: $file"
+    LC_CTYPE=en_US.UTF-8 metaflac \
+        --preserve-modtime \
+        "$@" "$file"
+}
+
+rename_flac()
+{
+    rename_generic "$@"
+}
+
+######
+##
+######
+
+file_template()
+{
+    file_author=`file_filter "$author"`
+     file_album=`file_filter "$album"`
+
+    for f in \
+        $file_author.$file_album?$1.*.$ext \
+        track$1.*.$ext \
+        track_$1.$ext \
+        $1-*.$ext \
+        $1.*.$ext \
+        "$1 "*.$ext \
+        *" - $1 - "*.$ext \
+        *.$1.*.$ext \
+        *-$1-*.$ext \
+        *_$1_*.$ext \
+        *" $1 "*.$ext
+    do
+        if [ -f "$f" ]; then
+            echo "$f"
+            return
+        fi
+    done
+}
+
+file_filter()
+{
+    echo "$*" \
+        | sed -e "s/  *$//" \
+              -e "s=/=_=g"
+}
+
+discstr()
+{
+    discstr=
+    case $disc:$disc_total in
+        : | 1:1 ) : ;;
+        *:  ) echo   " (disc $disc)" ;;
+        *:* ) printf " (disc %0${#disc_total}d of %d)" $disc $disc_total ;;
+    esac
+}
+
+rename_generic()
 {
     track=$1
     title=$2
@@ -155,13 +221,26 @@ rename()
     albumstr=$album`discstr`
 
     old=`file_template "$track"`
-    new=`file_filter "$author - $albumstr - $track - $title.mp3"`
+    new=`file_filter "$author - $albumstr - $track - $title.$ext"`
 
+    # Quoting matters here, if $old contains wildcard chars!
     case $new in
-        $old ) : ;;
-        *    ) mv -v "$old" "$new" ;;
+        "$old" ) : ;;
+        *      ) mv -v "$old" "$new" ;;
     esac
 }
+
+######
+##
+######
+
+info()   {      info_$ext "$@"; }
+label()  {     label_$ext "$@"; }
+rename() { rename_generic "$@"; }
+
+######
+##
+######
 
 config()
 {
@@ -182,6 +261,8 @@ config()
     # total, which will not be removed if it already exists, even if the
     # explicit replacement is empty.
     reset_tags= #'TPOS TRCK'
+
+           ext=mp3
 }
 
 doit()
@@ -193,12 +274,16 @@ doit()
 main()
 {
     config
+    case $ext in
+        mp3  ) eyeD3    --version > /dev/null || exit $? ;;
+        flac ) metaflac --version > /dev/null || exit $? ;;
+    esac
+
     doit  label
     doit  rename
     #doit info
 }
 
-eyeD3 --version > /dev/null || exit $?
 #main "$@"
 
 # eof
