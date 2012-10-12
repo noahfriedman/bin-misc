@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.16 2012/10/11 06:30:16 friedman Exp $
+# $Id: mp3riplabel,v 1.17 2012/10/11 06:40:31 friedman Exp $
 
 # Requires python-eyed3 fedora rpm for mp3 files
 # Requires metaflac for flac files
@@ -157,10 +157,20 @@ label_flac()
         esac
     done
 
+    for tag in "3||||$front_cover_image" \
+               "4||||$back_cover_image"  \
+               "5||||$leaflet_image"     \
+               "0||||$other_image"
+    do
+        case $tag in
+            ?"||||"?* ) set "$@" --import-picture-from "$tag" ;;
+        esac
+    done
+
     shift
 
     echo "Tagging: $file"
-    LC_CTYPE=en_US.UTF-8 metaflac \
+    metaflac \
         --preserve-modtime \
         "$@" "$file"
 }
@@ -247,25 +257,30 @@ rename() { rename_generic "$@"; }
 
 config()
 {
-                ##############################
-        author=''
-         album=''
+                      ##############################
+               author=''
+                album=''
 
-          year=
-         genre=
-    defcomment=
+                 year=
+                genre=
+           defcomment=
 
-   track_total=
+          track_total=
 
-          disc=
-    disc_total=
+                 disc=
+           disc_total=
+
+    front_cover_image=
+     back_cover_image=
+        leaflet_image=
+          other_image=
 
     # These are useful if you want to get rid of the track total or disc
     # total, which will not be removed if it already exists, even if the
     # explicit replacement is empty.
-    reset_tags= #'TPOS TRCK'
+           reset_tags= #'TPOS TRCK'
 
-           ext=mp3
+                  ext=mp3
 }
 
 doit()
@@ -276,6 +291,9 @@ doit()
 
 main()
 {
+    LC_CTYPE=${LC_CTYPE-en_US.UTF-8}
+    export LC_CTYPE
+
     config
     case $ext in
         mp3  ) eyeD3    --version > /dev/null || exit $? ;;
