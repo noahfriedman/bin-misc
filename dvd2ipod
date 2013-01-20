@@ -1,8 +1,19 @@
 #!/bin/sh
-# $Id: dvd2ipod,v 1.2 2010/04/15 08:49:56 friedman Exp $
+# $Id: dvd2ipod,v 1.3 2011/07/29 15:53:01 friedman Exp $
+
+preset="iPhone & iPod Touch"
+
+case $1 in
+    -universal ) preset='Universal'            ; shift ;;
+    -legacy    ) preset='iPod Legacy'          ; shift ;;
+    -ipod      ) preset='iPod'                 ; shift ;;
+    -iphone    ) preset='iPhone & iPod Touch'  ; shift ;;
+    -ipad      ) preset='iPad'                 ; shift ;;
+    -android   ) preset='Android High'         ; shift ;;
+esac
 
 exec HandBrakeCLI \
-    --preset     "iPhone & iPod Touch" \
+    --preset     "$preset" \
     --two-pass \
     --turbo \
     --markers \
