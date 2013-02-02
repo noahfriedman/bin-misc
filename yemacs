@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.12 2011/12/05 21:40:31 friedman Exp $
+# $Id: yemacs,v 1.13 2011/12/05 21:56:03 friedman Exp $
 
 client()
 {
@@ -11,6 +11,8 @@ client()
 
 main()
 {
+  ulimit -c unlimited  # I want core dumps from emacs
+
   builddirs="
     $HOME/src/emacs/build/current
     /export/src/emacs/build/current
