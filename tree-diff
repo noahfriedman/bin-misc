@@ -4,19 +4,22 @@
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.7 2009/04/29 20:28:57 friedman Exp $
+# $Id: tree-diff,v 1.8 2009/04/29 20:29:35 friedman Exp $
 
 exclude_pats=${EXCLUDE_PATS-'
     CVS
     RCS
     {arch}
     .git
+    .hg
     .svn
     _MTN
 
     .arch-ids
     .arch-inventory
     .cvsignore
+    .gitignore
+    .hgignore
 
     *~
     #*#
@@ -32,6 +35,7 @@ exclude_pats=${EXCLUDE_PATS-'
     *.obj
     *.so
     lib*.so.*
+    *.dll
     *.dylib
     *.elc
     *.class
@@ -40,6 +44,20 @@ exclude_pats=${EXCLUDE_PATS-'
     autom4te.cache
     config.log
     config.status
+
+'}${EXCLUDE_AC+'
+
+    ChangeLog*
+    Makefile
+    Makefile.*
+    config.guess
+    config.sub
+    configure
+    configure.in
+    config.h.in
+    install-sh
+    ltmain.sh
+    *.m4
 '}
 
 set -o noglob
