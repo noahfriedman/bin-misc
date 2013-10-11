@@ -1,0 +1,148 @@
+#!/usr/bin/env perl
+# cp-partial --- copy just part of a file
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2013-10-10
+# Public domain.
+
+# $Id$
+
+# Commentary:
+# Code:
+
+use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../lib/perl";
+use lib "$ENV{HOME}/lib/perl";
+
+use Getopt::Long;
+use Pod::Usage;
+
+use Fcntl         qw(:seek);
+
+use NF::FileUtil  qw(:backup :stat :open);
+use NF::Diag      qw(:direct);
+use NF::Offset;
+
+our %opt = ( beg      => 0,
+             end      => 0,
+             backup   => 0,
+             verbose  => 0,
+             preserve => 0,
+           );
+
+sub _verbose
+{
+  diag_info (join (" ",  @_)) if $opt{verbose};
+}
+
+sub _error
+{
+  diag_fatal (@_);
+}
+
+sub max { my $m = shift; map { $m = $_ if $_ > $m } @_; return $m }
+sub min { my $m = shift; map { $m = $_ if $_ < $m } @_; return $m }
+
+sub cp
+{
+  my ($src, $dst) = @_;
+
+  if (-d $dst)
+    {
+      (my $basename = $src) =~ s=.*/==;
+      $dst .= "/$basename";
+    }
+
+  backup_file ($dst) if $opt{backup};
+  _verbose ("copying", $src, "->", $dst);
+
+  my $srcfh = xsysopen ($src, "r");
+  my $dstfh = xsysopen ($dst, "w", 0600);
+
+  my @srcst = stat ($srcfh);
+  my $beg   = $opt{beg};
+  my $end   = ($opt{end} <= 0
+               ? $srcst[7] + $opt{end}
+               : min ($opt{end}, $srcst[7])
+              );
+  my $maxbuf = min ($end - $beg, 4 * 2**20);  # 4mb max
+
+  #print "beg = $beg\nend = $end\nmaxbuf = $maxbuf\n";
+
+  unless (sysseek ($srcfh, $beg, SEEK_SET))
+    {
+      _error ($src, "seek $beg", $!);
+      return;
+    }
+
+  my $data;
+  my $amt = $beg;
+  while (my $len = sysread ($srcfh, $data, $maxbuf))
+    {
+      #print "read $len bytes\n";
+      if (syswrite ($dstfh, $data, $len) != $len)
+        {
+          _error ("write", $dst, $!);
+          return;
+        }
+
+      $amt += $len;
+      #print "amt read = $amt\n";
+      last if $amt == $end;
+      my $left = $end - $amt;
+      $maxbuf = $left if $maxbuf > $left;
+      #print "maxbuf = $maxbuf\n";
+    }
+  close ($dstfh);
+  set_file_stats ($dst, \@srcst, ($opt{preserve} ? 1|2|4 : 1));
+  return 1;
+}
+
+sub parse_options
+{
+  local *ARGV = \@{$_[0]}; # modify our local arglist, not real ARGV.
+  my $help = -1;
+
+  my $parser = Getopt::Long::Parser->new;
+  $parser->configure (qw(bundling autoabbrev));
+
+  my $succ = $parser->getoptions
+    ("h|help|usage+"            => \$help,
+
+     "b|begin-skip|beg-skip=s"  => \$opt{beg},
+     "e|end-skip=s"             => \$opt{end},
+
+     "p|preserve"               => \$opt{preserve},
+
+     "B|backup"                 => \$opt{backup},
+     "v|verbose+"               => \$opt{verbose},
+    );
+
+  pod2usage (-exitstatus => 1, -verbose => 0)     unless $succ;
+  pod2usage (-exitstatus => 0, -verbose => $help) if $help >= 0;
+
+  $NF::FileUtil::errors_fatal = 1;
+  $NF::FileUtil::verbose      = $opt{verbose};
+
+  $opt{beg} = offset ($opt{beg});
+  $opt{end} = offset ($opt{end});
+}
+
+sub main
+{
+  NF::Diag->display_timestamp (0);
+  NF::Diag->display_pid       (0);
+
+  parse_options (\@_);
+
+  my $dest = pop @_;
+  if (@_ > 1 && ! -d $dest)
+    {
+      diag_fatal ("If copying more than one file, final target must be a directory.");
+    }
+
+  map { cp ($_, $dest) } @_;
+}
+
+main (@ARGV);
