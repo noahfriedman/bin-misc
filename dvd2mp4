@@ -1,0 +1,45 @@
+#!/bin/sh
+# $Id$
+
+chapters()
+{
+    HandBrakeCLI -t 1 --scan -i "$1" \
+        | sed -ne 's/^.*has \([0-9]*\) chapter.*$/\1/p'
+}
+
+handbrake()
+{
+    HandBrakeCLI \
+        --preset     "Android High" \
+        \
+        --two-pass \
+        --turbo \
+        \
+        --format mp4 \
+        --optimize \
+        --markers \
+        --ipod-atom \
+        \
+        "$@"
+}
+
+chapterize()
+{
+    basename=`basename "$1" .dvd`
+    last=`chapters "$1"`
+
+    for c in `seq --equal-width 1 $last`; do
+        handbrake -c $c -i "$1" -o "$basename - Chapter $c.mp4"
+    done
+}
+
+main()
+{
+    for dvd in "$@"; do
+        chapterize "$dvd"
+    done
+}
+
+main "$@"
+
+# eof
