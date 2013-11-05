@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.17 2012/10/11 06:40:31 friedman Exp $
+# $Id: mp3riplabel,v 1.18 2012/10/12 09:01:29 friedman Exp $
 
 # Requires python-eyed3 fedora rpm for mp3 files
 # Requires metaflac for flac files
@@ -176,6 +176,68 @@ label_flac()
 }
 
 rename_flac()
+{
+    rename_generic "$@"
+}
+
+######
+## ogg/vorbis
+######
+
+info_ogg()
+{
+    track=$1
+    file=`file_template "$track"`
+
+    echo "$file:"
+    vorbiscomment --raw --list "$file"
+    echo
+}
+
+label_ogg()
+{
+    track=$1
+    title=$2
+    shift; shift
+
+    file=`file_template "$track"`
+
+    set fnord "$@"
+
+    for tag in $reset_tags ; do
+        set "$@" --remove-tag=$tag
+    done
+
+    for comment in   "ARTIST=$author"       \
+                      "ALBUM=$album"        \
+                      "TITLE=$title"        \
+                       "DATE=$year"         \
+                      "GENRE=$genre"        \
+                "TRACKNUMBER=$track"        \
+                 "TRACKTOTAL=$track_total"  \
+                 "DISCNUMBER=$disc"         \
+                  "DISCTOTAL=$disc_total"
+    do
+         tag=${comment%%=*}
+        data=${comment#*=}
+
+        case $data in
+            "" ) : ;;
+            *  ) set "$@" --tag "$comment" ;;
+        esac
+    done
+
+    shift
+
+    echo "Tagging: $file"
+    vorbiscomment \
+        --write \
+        --raw \
+        "$@" \
+        "$file"
+}
+
+rename_ogg()
 {
     rename_generic "$@"
 }
