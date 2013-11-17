@@ -1,21 +1,20 @@
 #!/bin/sh
-# $Id: dvd2chapters,v 1.1 2013/10/18 05:24:55 friedman Exp $
+# dvd2mp4 --- rip dvds
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2013-10-18
+# Public domain.
 
-chapters()
-{
-    HandBrakeCLI -t 1 --scan -i "$1" 2>&1 \
-        | sed -ne 's/^.*has \([0-9]*\) chapter.*$/\1/p'
-}
+# $Id: dvd2chapters,v 1.2 2013/11/04 04:40:56 friedman Exp $
 
 handbrake()
 {
     HandBrakeCLI \
-        --preset     "Android High" \
+        --preset     "$preset" \
         \
         --two-pass \
         --turbo \
         \
-        --format mp4 \
+        --format     "$format" \
         --optimize \
         --markers \
         --ipod-atom \
@@ -23,20 +22,88 @@ handbrake()
         "$@"
 }
 
-chapterize()
+num_chapters()
 {
-    basename=`basename "$1" .dvd`
-    last=`chapters "$1"`
+    HandBrakeCLI -t 1 --scan -i "$1" 2>&1 \
+        | sed -ne 's/^.*has \([0-9]*\) chapter.*$/\1/p'
+}
+
+chapters()
+{
+    basename=`echo "$1" | sed -e 's=.*/==' -e 's/\.[^.]*$//'`
+    last=`num_chapters "$1"`
 
     for c in `seq --equal-width 1 $last`; do
-        handbrake -c $c -i "$1" -o "$basename - Chapter $c.mp4"
+        handbrake -c $c -i "$1" -o "$basename - Chapter $c.$format"
     done
+}
+
+single()
+{
+    basename=`echo "$1" | sed -e 's=.*/==' -e 's/\.[^.]*$//'`
+    handbrake -i "$1" -o "$basename.$format"
+}
+
+# HandBrakeCLI -z
+preset()
+{
+    case $1 in
+        universal      ) preset='Universal'            ;; #  720
+        normal         ) preset='Normal'               ;;
+        high-profile   ) preset='High Profile'         ;;
+
+        legacy         ) preset='iPod Legacy'          ;; #  640
+        ipod           ) preset='iPod'                 ;; #  320
+        iphone         ) preset='iPhone & iPod Touch'  ;; #  480
+        ipad           ) preset='iPad'                 ;; # 1280
+
+        android        ) preset='Android High'         ;; #  720
+        android-high   ) preset='Android High'         ;; #  720
+
+        android-low    ) preset="Android Mid"          ;; #  480
+        android-mid    ) preset="Android Mid"          ;; #  480
+
+        *              ) preset=$1                     ;;
+    esac
 }
 
 main()
 {
+    preset="Android High"
+    format=mp4
+    split=single
+
+    while : ; do
+        case $# in 0) break ;; esac
+
+        case $1 in
+            --*=* )
+                opt=${1%=*}
+                val=${1#*=}
+                shift
+                set fnord "$opt" "$val" "$@"
+                shift ;;
+        esac
+
+        case $1 in
+            -p | --preset   | --p* ) preset "$2" ; shift ;;
+            -f | --format   | --f* ) format=$2   ; shift ;;
+
+            -s | --single   | --s* ) split=single   ;;
+            -c | --chapters | --c* ) split=chapters ;;
+
+            -* )
+                echo "${0##*/}: $1: Invalid option" 1>&2
+                exit 1 ;;
+
+            * ) break ;;
+        esac
+
+        shift
+    done
+
     for dvd in "$@"; do
-        chapterize "$dvd"
+        $split "$dvd"
     done
 }
 
