@@ -1,0 +1,8 @@
+#!/bin/sh
+# $Id$
+
+{   openssl x509 -noout -fingerprint -md5  -in "$@"
+    openssl x509 -noout -fingerprint -sha1 -in "$@"
+} | fmtcols -n2
+
+# eof
