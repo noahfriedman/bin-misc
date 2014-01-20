@@ -1,8 +1,49 @@
 #!/bin/sh
-# $Id$
+# $Id: pem-fingerprint,v 1.1 2014/01/09 22:29:39 friedman Exp $
 
-{   openssl x509 -noout -fingerprint -md5  -in "$@"
-    openssl x509 -noout -fingerprint -sha1 -in "$@"
-} | fmtcols -n2
+fp()
+{
+    if [ ".$verbose" = ".t" ]; then
+        openssl x509 -in "$1" \
+            -noout \
+            -subject \
+            -issuer \
+            -dates \
+            -nameopt align,sep_multiline,space_eq,sname,utf8,dn_rev
+        echo
+    fi | sed 's/^\([^ =]*\)=\([^ ]\)/\1 = \2/'
+
+    for type in md5 sha1; do
+        openssl x509 -in "$1" -noout -fingerprint -$type
+    done | sed -e 's/Fingerprint=//'
+}
+
+fetch()
+{
+    h=`echo "$1" | sed -e 's=^[^:]*://==' -e 's=/.*=='`
+    case $h in
+        *:* ) : ;;
+        * ) h=$h:443 ;;
+    esac
+
+    openssl s_client -connect $h < /dev/null 2>&0
+}
+
+main()
+{
+    case $1 in -v ) verbose=t ; shift ;; esac
+
+    if [ -f "$1" ]; then
+        fp "$1"
+    else
+        umask 022
+        tmpfile=/tmp/pem-fp.$$
+        trap 'rm -f $tmpfile' 0 1 2 3 15
+        fetch "$1" > $tmpfile
+        fp $tmpfile
+    fi | fmtcols -n2
+}
+
+main "$@"
 
 # eof
