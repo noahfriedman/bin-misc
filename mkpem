@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.5 2014/01/20 06:22:32 friedman Exp $
+# $Id: mkpem,v 1.6 2014/01/20 06:27:14 friedman Exp $
 
 # Commentary:
 
@@ -28,95 +28,102 @@
 # `never' or `simple' means do not make them.
 make_backup_file_name()
 {
-  local name=$1
-  shift
+    local name=$1
+    shift
 
-  case $VERSION_CONTROL in
-    never | simple ) result=$name~ ;;
-    * )
-      highest=$(for f in "$name".~*~ ; do echo "$f"; done \
-                | sed -ne 's/~$//' -e 's/.*\.~//' -e p \
-                | sort -nr \
-                | head -1)
-      case $highest in
-        '*' | '' ) highest=0 ;;
-      esac
-      case $VERSION_CONTROL in
-        nil | existing )
-          case $highest in
-            0 ) result=$name~ ;;
-          esac ;;
-        t | numbered | * )
-          next=$(( $highest + 1 ))
-          result=$name.~$next~ ;;
-      esac ;;
-  esac
+    case $VERSION_CONTROL in
+        never | simple ) result=$name~ ;;
+        * )
+            highest=$(for f in "$name".~*~ ; do echo "$f"; done \
+                      | sed -ne 's/~$//' -e 's/.*\.~//' -e p \
+                      | sort -nr \
+                      | head -1)
+            case $highest in
+                '*' | '' ) highest=0 ;;
+            esac
+            case $VERSION_CONTROL in
+                nil | existing )
+                    case $highest in
+                        0 ) result=$name~ ;;
+                    esac ;;
+                t | numbered | * )
+                    next=$(( $highest + 1 ))
+                    result=$name.~$next~ ;;
+            esac ;;
+    esac
 
-  echo "$result"
+    echo "$result"
 }
 
 mkpem()
 {
-  local config=$1
-  local pem=$2
-  shift; shift
+    local config=$1
+    local base=$2
+    shift; shift
 
-  if [[ -f $pem ]]; then
-    bck=$(make_backup_file_name "$pem")
-    echo "Moving existing $pem -> $bck"
-    echo
-    mv "$pem" "$bck"
-  fi
+    local pem=$base.pem
+    local crt=$base.crt
+    local key=$base.key
 
-  {
-    echo "[ req ]"
-    echo RANDFILE                = /dev/urandom
-    echo prompt                  = no
-    echo x509_extensions         = v3_ca
-    echo distinguished_name      = req_dn
+    for f in $pem $crt $key ; do
+        if [[ -f $f ]]; then
+            bck=$(make_backup_file_name "$f")
+            echo "Moving existing $f -> $bck"
+            echo
+            mv "$f" "$bck"
+        fi
+    done
 
-    echo
-    echo "[ v3_ca ]"
-    echo  subjectKeyIdentifier   = hash
-    echo  authorityKeyIdentifier = keyid:always,issuer:always
+    {
+        echo "[ req ]"
+        echo RANDFILE                = /dev/urandom
+        echo prompt                  = no
+        echo x509_extensions         = v3_ca
+        echo distinguished_name      = req_dn
 
-    # Critical means cert should be rejected when used for purposes other
-    # than those indicated in this extension.
-    #
-    #echo basicConstraints       = critical, CA:true, pathlen:0
-    echo  basicConstraints       = critical, CA:false
+        echo
+        echo "[ v3_ca ]"
+        echo  subjectKeyIdentifier   = hash
+        echo  authorityKeyIdentifier = keyid:always,issuer:always
 
-    #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
-    echo keyUsage                = critical, keyEncipherment, keyCertSign
+        # Critical means cert should be rejected when used for purposes other
+        # than those indicated in this extension.
+        #
+        #echo basicConstraints       = critical, CA:true, pathlen:0
+        echo  basicConstraints       = critical, CA:false
 
-    #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
-    echo  extendedKeyUsage       = critical, serverAuth
+        #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
+        echo keyUsage                = critical, keyEncipherment, keyCertSign
 
-    # Don't use nsCertType; deprecated.
-    #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
-    #echo nsCertType             = critical, server
+        #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
+        echo  extendedKeyUsage       = critical, serverAuth
 
-    #echo subjectAltName         = email:foo@company.com, email:bar@company.com
-    #echo subjectAltName         = DNS:foo.company.com, DNS:bar.company.com
+        # Don't use nsCertType; deprecated.
+        #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
+        #echo nsCertType             = critical, server
 
-    echo
-    echo "[ req_dn ]"
-    while read l; do echo "$l" ; done < $config
-  } | openssl req \
-        -config     /dev/stdin      \
-        -newkey     rsa:1024        \
-        -x509                       \
-        -sha1                       \
-        -nodes                      \
-        -days       $(( 365 * 10 )) \
-        -keyout     "$pem"          \
-        -out        "$pem"          \
-        "$@"
+        #echo subjectAltName         = email:foo@company.com, email:bar@company.com
+        #echo subjectAltName         = DNS:foo.company.com, DNS:bar.company.com
 
-  { echo
-    openssl x509 -in "$pem" -noout -text
-  } >> "$pem"
+        echo
+        echo "[ req_dn ]"
+        while read l; do echo "$l" ; done < $config
+    } | openssl req \
+                -config     /dev/stdin      \
+                -newkey     rsa:3072        \
+                -x509                       \
+                -sha1                       \
+                -nodes                      \
+                -days       $(( 365 * 10 )) \
+                -keyout     "$key"          \
+                -out        "$crt"          \
+                "$@"
 
+    {   echo
+        openssl x509 -in "$crt" -noout -text
+    } >> "$crt"
+
+    cat "$key" "$crt" > "$pem"
 }
 
 main()
@@ -130,8 +137,8 @@ main()
 
   config=$1
   shift
-  pem=`basename $config .dn`.pem
-  mkpem "$config" "$pem" "$@"
+  basename=`basename $config .dn`
+  mkpem "$config" "$basename" "$@"
 }
 
 main "$@"
