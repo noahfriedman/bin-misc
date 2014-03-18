@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.18 2012/10/12 09:01:29 friedman Exp $
+# $Id: mp3riplabel,v 1.19 2013/11/05 05:01:14 friedman Exp $
 
 # Requires python-eyed3 fedora rpm for mp3 files
 # Requires metaflac for flac files
@@ -65,6 +65,7 @@ label_mp3()
                     for tag in $reset_tags ; do
                         case $tag in
                             TXXX:* ) set "$@" --set-user-text-frame ${tag#TXXX:}: ;;
+                            APIC   ) set "$@" --remove-images ;;
                             *      ) set "$@" --set-text-frame $tag: ;;
                         esac
                     done
@@ -72,6 +73,19 @@ label_mp3()
                     eyed3 "$@" "$file"
                 ) ;;
         esac
+
+        set fnord "$@"
+        for tag in "$front_cover_image:FRONT_COVER:" \
+                    "$back_cover_image:BACK_COVER:"  \
+                       "$leaflet_image:LEAFLET:"     \
+                         "$other_image:OTHER:"
+        do
+            case $tag in
+                :*: ) : ;;
+                *   ) set "$@" --add-image="$tag" ;;
+            esac
+        done
+        shift
 
         eyed3 \
             --set-encoding utf16-LE        \
