@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.6 2014/01/20 06:27:14 friedman Exp $
+# $Id: mkpem,v 1.7 2014/02/18 02:00:52 friedman Exp $
 
 # Commentary:
 
@@ -65,6 +65,9 @@ mkpem()
     local crt=$base.crt
     local key=$base.key
 
+    local ksz=${MKPEM_KEYSIZE:-3072}
+    local yrs=${MKPEM_YEARS:-10}
+
     for f in $pem $crt $key ; do
         if [[ -f $f ]]; then
             bck=$(make_backup_file_name "$f")
@@ -109,14 +112,14 @@ mkpem()
         echo "[ req_dn ]"
         while read l; do echo "$l" ; done < $config
     } | openssl req \
-                -config     /dev/stdin      \
-                -newkey     rsa:3072        \
-                -x509                       \
-                -sha1                       \
-                -nodes                      \
-                -days       $(( 365 * 10 )) \
-                -keyout     "$key"          \
-                -out        "$crt"          \
+                -config     /dev/stdin        \
+                -newkey     rsa:$ksz          \
+                -x509                         \
+                -sha1                         \
+                -nodes                        \
+                -days       $(( 365 * $yrs )) \
+                -keyout     "$key"            \
+                -out        "$crt"            \
                 "$@"
 
     {   echo
