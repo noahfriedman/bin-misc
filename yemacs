@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.14 2013/02/02 00:06:17 friedman Exp $
+# $Id: yemacs,v 1.15 2015/02/06 02:40:46 friedman Exp $
 
 client()
 {
@@ -36,7 +36,6 @@ locate_build()
 
 main()
 {
-    set -x
     ulimit -c unlimited  # I want core dumps from emacs
 
     builddirs="
