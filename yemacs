@@ -1,51 +1,69 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.13 2011/12/05 21:56:03 friedman Exp $
+# $Id: yemacs,v 1.14 2013/02/02 00:06:17 friedman Exp $
 
 client()
 {
-  PATH=$ydir/src:$ydir/lib-src:$PATH
-  EMACS_SERVER_FILE=gnuedit
-  export EMACS_SERVER_FILE
-  exec emacsclient --no-wait --eval "$@" > /dev/null
+    PATH=$ydir/src:$ydir/lib-src:$PATH
+    EMACS_SERVER_FILE=gnuedit
+    export EMACS_SERVER_FILE
+    exec emacsclient --no-wait --eval "$@" > /dev/null
+}
+
+locate_build()
+{
+    ydir=
+    for dir in $builddirs; do
+        test -d $dir || continue
+        for subdir in `cd $dir && ls -1r`; do
+            if [ -d $dir/$subdir -a -f $dir/$subdir/src/emacs ]; then
+                # Use /bin/pwd to follow symlinks
+                ydir=`cd $dir/$subdir && /bin/pwd`
+                break 2
+            fi
+        done
+    done
+
+    case $ydir in
+        '' ) return 1 ;;
+    esac
+
+    case $progname in
+        emacs ) progname="$progname (${ydir##*/})" ;;
+    esac
+    test -e "$ydir/src/$progname" || ln -s emacs "$ydir/src/$progname"
+    return 0 # success
 }
 
 main()
 {
-  ulimit -c unlimited  # I want core dumps from emacs
+    set -x
+    ulimit -c unlimited  # I want core dumps from emacs
 
-  builddirs="
-    $HOME/src/emacs/build/current
-    /export/src/emacs/build/current
-  "
+    builddirs="
+        $HOME/src/emacs/build
+        /export/src/emacs/build
+    "
 
-  case $1 in
-    -login ) progname=-emacs ; shift ;;
-    *      ) progname=emacs          ;;
-  esac
+    case $1 in
+        -login ) progname=-emacs ; shift ;;
+        *      ) progname=emacs          ;;
+    esac
 
-  for dir in $builddirs; do
-    if [ -d $dir -a -f $dir/src/emacs ]; then
-      ydir=`cd $dir && /bin/pwd`
-      case $progname in
-        emacs ) progname="$progname (${ydir##*/})" ;;
-      esac
-      test -e "$ydir/src/$progname" || ln -s emacs "$ydir/src/$progname"
-    fi
-  done
+    locate_build || exit $?
 
-  case $1 in
-    -attach )
-      case $DISPLAY in
-        '' ) client "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
-        *  ) client "(make-frame-on-display \"$DISPLAY\")"    ;;
-      esac ;;
-  esac
+    case $1 in
+        -attach )
+            case $DISPLAY in
+                '' ) client "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
+                *  ) client "(make-frame-on-display \"$DISPLAY\")"    ;;
+            esac ;;
+    esac
 
-  YEMACS_EXECDIR=$ydir/src
-  PATH=$YEMACS_EXECDIR:$PATH
-  export YEMACS_EXECDIR PATH
-  exec -a "$progname" $ydir/src/emacs "$@"
-  exec emacs "$@"
+    YEMACS_EXECDIR=$ydir/src
+    PATH=$YEMACS_EXECDIR:$PATH
+    export YEMACS_EXECDIR PATH
+    exec -a "$progname" $ydir/src/emacs "$@"
+    exec emacs "$@"
 }
 
 main "$@"
