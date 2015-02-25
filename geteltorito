@@ -13,8 +13,15 @@ use Getopt::Std;
 # Get latest version from:
 # http://userpages.uni-koblenz.de/~krienke/ftp/noarch/geteltorito
 #
-$utilVersion="0.5"; 
+$utilVersion="0.6"; 
 #
+# Version 0.6
+#    2015/02/25
+#    I included a patch by Daniel Kekez, daniel.kekez@utoronto.ca to make geteltorito
+#    better compatible with windows:
+#       "To run this Perl script using using Strawberry Perl under Windows, I
+#       found it was necessary to explicitly open the files in binary mode since
+#       Windows will default to text mode when open() is called."
 # Version 0.5
 #    2009/06/22
 #    A patch for harddisk emulation images from <colimit@gmail.com>.
@@ -51,7 +58,7 @@ sub getSector{
    my ($secNum, $secCount, $file)=@_;
    my ($sec, $count);
 
-   open(FILE, $file) || die "Cannot open \"$file\" \n";
+   open(FILE, "<:raw", $file) || die "Cannot open \"$file\" \n";
 
    seek(FILE, $secNum*$secSize, 0);
    $count=read(FILE, $sec, $vSecSize*$secCount, 0) ;
@@ -71,7 +78,7 @@ sub writeOutputFile{
    my($name)=shift;
    my($value)=shift;
 
-   open(OUT, ">".$name)|| die "$0: Cannot open outputfile \"$name\" for writing. Stop.";
+   open(OUT, ">:raw", $name)|| die "$0: Cannot open outputfile \"$name\" for writing. Stop.";
    print OUT $value;
    close(OUT);
 }
