@@ -1,6 +1,0 @@
-#!/bin/sh
-# $Id: ups,v 1.1 2011/04/09 20:39:29 friedman Exp $
-
-# Talk to apcupsd daemon
-
-printf "\0\6status" | nc -4 ${1-localhost} 3551 | sed -e 's/^..//'

@@ -1,6 +1,0 @@
-#!/bin/sh
-# $Id: start-xkbevd,v 1.1 2008/03/05 00:52:32 friedman Exp $
-
-with -s run-misc.sh xkbevd -bg >> $HOME/.xinitrc.log 2>&1 < /dev/null
-
-# eof

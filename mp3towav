@@ -1,5 +1,0 @@
-#!/bin/sh
-# $Id: mp3towav,v 1.1 1997/12/29 13:16:00 friedman Exp $
-
-mpg123 -q --stdout ${1+"$1"} \
- | sox -t raw -s -c2 -b 16 -r 11025 - -t wav ${2+"$2"}
