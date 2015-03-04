@@ -1,0 +1,16 @@
+#!/usr/bin/env perl
+# $Id$
+
+# Sort email addresses or domain names by (sub)domain.
+# Understands typical address comments ("name <addr>" and "addr (name)").
+
+use strict;
+
+my %tbl = map { my $addr = $1 if /<(.*?)>/ || /^(\S+)\s+\(/ || /^(\S+)$/;
+                my $key = join (".", reverse split (/[.\@]/, lc $addr));
+                $key => $_ ;
+              } <> ;
+
+map { print $tbl{$_} } sort keys %tbl;
+
+# eof
