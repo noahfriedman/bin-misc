@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+
+use Carp;
+
+# Return string representation of n in base b.
+# If $use_twos_comp is true and n < 0, then do that.  Otherwise, use minus
+# signs in results a la normal decimal printing.
+sub integer_to_string
+{
+  my ($n, $b, $use_twos_comp) = @_;
+  $b ||= 10;
+  croak "integer_to_string: base must be in [2, 36]"
+    if $b < 2 || $b > 36;
+
+  $n += 0;  # force to int if string (e.g. from @ARGV)
+  if ($n < 0 && $use_twos_comp)
+    {
+      $n ^= ~n;
+      croak ("integer_to_string: cannot convert type ",
+             ref $n, " to two's complement")
+        if $n != $n; # NaN is never equal to itself
+    }
+
+  my $negp = ($n < 0);
+  $n = abs $n;
+  my (@d, $r);
+  while ($n)
+    {
+      $r = $n % $b;
+      $n = ($n - $r) / $b;
+      unshift @d, chr ($r + ($r > 9 ? 0x57 : 0x30));
+    }
+  unshift @d, '-' if $negp;
+  join ("", @d);
+}
+
+sub decode
+{
+  while (<>)
+    {
+      while (/(\d{8})/g)
+        {
+          map { my $n = 0;
+                map { $n = ($n << 1) | (ord ($_) - 0x30) } split (//, $_);
+                print chr ($n);
+              } split (/\s+/, $1);
+        }
+    }
+  print "\n";
+}
+
+sub encode
+{
+  while (<>)
+    {
+      map { printf ("%08b ", ord ($_)) } split (//, $_);
+    }
+  print "\n";
+}
+
+printf "%s\n", integer_to_string (@ARGV);
