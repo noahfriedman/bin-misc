@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.7 2014/02/18 02:00:52 friedman Exp $
+# $Id: mkpem,v 1.8 2015/01/03 04:56:00 friedman Exp $
 
 # Commentary:
 
@@ -65,7 +65,7 @@ mkpem()
     local crt=$base.crt
     local key=$base.key
 
-    local ksz=${MKPEM_KEYSIZE:-3072}
+    local ksz=${MKPEM_KEYSIZE:-4096}
     local yrs=${MKPEM_YEARS:-10}
 
     for f in $pem $crt $key ; do
@@ -115,7 +115,7 @@ mkpem()
                 -config     /dev/stdin        \
                 -newkey     rsa:$ksz          \
                 -x509                         \
-                -sha1                         \
+                -sha256                       \
                 -nodes                        \
                 -days       $(( 365 * $yrs )) \
                 -keyout     "$key"            \
