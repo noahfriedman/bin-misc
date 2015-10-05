@@ -1,0 +1,8 @@
+#!/bin/sh
+# $Id$
+
+# Compute stateless autoconfig address based on interface MAC
+
+exec ipv6calc -q --mac_to_eui64 "$@"
+
+# eof
