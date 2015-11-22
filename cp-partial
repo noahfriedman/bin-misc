@@ -4,7 +4,7 @@
 # Created: 2013-10-10
 # Public domain.
 
-# $Id$
+# $Id: cp-partial,v 1.1 2013/10/11 20:41:23 friedman Exp $
 
 # Commentary:
 # Code:
@@ -61,6 +61,8 @@ sub cp
   my $dstfh = xsysopen ($dst, "w", 0600);
 
   my @srcst = stat ($srcfh);
+  $srcst[7] = offset ($opt{size}) if defined $opt{size};
+
   my $beg   = $opt{beg};
   my $end   = ($opt{end} <= 0
                ? $srcst[7] + $opt{end}
@@ -114,6 +116,7 @@ sub parse_options
      "e|end-skip=s"             => \$opt{end},
 
      "p|preserve"               => \$opt{preserve},
+     "s|size=s"                 => \$opt{size},
 
      "B|backup"                 => \$opt{backup},
      "v|verbose+"               => \$opt{verbose},
