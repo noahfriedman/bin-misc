@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.19 2013/11/05 05:01:14 friedman Exp $
+# $Id: mp3riplabel,v 1.20 2014/03/18 06:32:32 friedman Exp $
 
-# Requires python-eyed3 fedora rpm for mp3 files
+# Requires python-eyed3 0.7.5 or later fedora rpm for mp3 files
 # Requires metaflac for flac files
 
 ######
@@ -10,7 +10,7 @@
 
 eyed3()
 {
-    set eyeD3 --no-tagging-time-frame ${1+"$@"}
+    set eyeD3 ${1+"$@"}
     case $VERBOSE in
         '' ) "$@" ;;
         *  ) (set -x; "$@") ;;
@@ -24,8 +24,8 @@ info_mp3()
 
     # Can't use these two options together.
     # Don't use our eye3d function above.
-    eyeD3 -v        "$file"
-    eyeD3 --lametag "$file"
+    eyeD3 -v          "$file"
+    eyeD3 -P lameinfo "$file"
 }
 
 label_mp3()
@@ -88,17 +88,17 @@ label_mp3()
         shift
 
         eyed3 \
-            --set-encoding utf16-LE        \
-            --to-v2.3                      \
-            --artist       "$author"       \
-            --album        "$album"        \
-            --disc         "$disc"         \
-            --disc-total   "$disc_total"   \
-            --track        "$track"        \
-            --track-total  "$track_total"  \
-            --title        "$title"        \
-            --year         "$year"         \
-            --genre        "$genre"        \
+            --encoding       utf16           \
+            --to-v2.3                        \
+            --artist         "$author"       \
+            --album          "$album"        \
+            --disc-num       "$disc"         \
+            --disc-total     "$disc_total"   \
+            --track          "$track"        \
+            --track-total    "$track_total"  \
+            --title          "$title"        \
+            --recording-date "$year"         \
+            --genre          "$genre"        \
             ${1+"$@"} \
             "$file"
     } > /dev/null
@@ -296,7 +296,7 @@ discstr()
 {
     discstr=
     case $disc:$disc_total in
-        : | 1:1 ) : ;;
+        : | 1:1 | 01:01 ) : ;;
         *:  ) echo   " (disc $disc)" ;;
         *:* ) printf " (disc %0${#disc_total}d of %d)" $disc $disc_total ;;
     esac
@@ -372,8 +372,8 @@ main()
 
     config
     case $ext in
-        mp3  ) eyeD3    --version > /dev/null || exit $? ;;
-        flac ) metaflac --version > /dev/null || exit $? ;;
+        mp3  ) type -p eyeD3    > /dev/null || exit $? ;;
+        flac ) type -p metaflac > /dev/null || exit $? ;;
     esac
 
     case $# in
