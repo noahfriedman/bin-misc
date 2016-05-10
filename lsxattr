@@ -1,17 +1,17 @@
 #!/bin/sh
-# $Id: lsxattr,v 1.2 2010/02/09 18:41:12 friedman Exp $
+# $Id: lsxattr,v 1.3 2012/09/18 02:11:16 friedman Exp $
 
 case `uname -s` in
     Linux )
         # Note: security.capability values can be decoded
         # with the `getcap' program.
-        exec getfattr --encoding=text \
-            --match '^.*'  \
-            --dump \
-            --absolute-names \
-            --no-dereference \
-            --physical \
-            "$@"
+        exec getfattr \
+             --match '^.*'  \
+             --dump \
+             --absolute-names \
+             --no-dereference \
+             --physical \
+             "$@"
         ;;
 
     FreeBSD | NetBSD )
@@ -38,9 +38,9 @@ case `uname -s` in
         for file in "$@" ; do
             echo "# file: $file"
             xattr "$file" |
-            while read attr; do
-                echo "$attr="\"`xattr -p "$attr" "$file"`\"
-            done
+                while read attr; do
+                    echo "$attr="\"`xattr -p "$attr" "$file"`\"
+                done
         done
         ;;
 
