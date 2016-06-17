@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.9 2015/09/03 06:31:34 friedman Exp $
+# $Id: mkpem,v 1.10 2016/06/17 18:51:51 friedman Exp $
 
 # Commentary:
 
@@ -14,7 +14,7 @@
 #
 #     [ v3_ca ]
 #     subjectAltName = DNS:cname.bar.com,\
-#                      IP:127.0.0.1
+#                      IP:127.0.0.1,IP:::1
 #
 # Order is least significant to most significant!
 # Usually you want to list C first and CN last.
