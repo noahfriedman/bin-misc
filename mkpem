@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.8 2015/01/03 04:56:00 friedman Exp $
+# $Id: mkpem,v 1.9 2015/09/03 06:31:34 friedman Exp $
 
 # Commentary:
 
@@ -9,10 +9,12 @@
 #     ST           = California
 #     L            = San Francisco
 #     O            = Nocturnal Aviation, Inc.
+#     OU           = Shipping and Receiving
 #     CN           = foo.bar.com
 #
 #     [ v3_ca ]
-#     subjectAltName = DNS:cname.bar.com,IP:127.0.0.1
+#     subjectAltName = DNS:cname.bar.com,\
+#                      IP:127.0.0.1
 #
 # Order is least significant to most significant!
 # Usually you want to list C first and CN last.
@@ -67,12 +69,14 @@ mkpem()
 
     local ksz=${MKPEM_KEYSIZE:-4096}
     local yrs=${MKPEM_YEARS:-10}
+    local  sn=${MKPEM_SERIAL:-`TZ=UTC date +'%Y%m%d%H%M%S'`}
+
+    local days=$(( 365 * $yrs ))
 
     for f in $pem $crt $key ; do
         if [[ -f $f ]]; then
-            bck=$(make_backup_file_name "$f")
+            bck=`make_backup_file_name "$f"`
             echo "Moving existing $f -> $bck"
-            echo
             mv "$f" "$bck"
         fi
     done
@@ -83,6 +87,9 @@ mkpem()
         echo prompt                  = no
         echo x509_extensions         = v3_ca
         echo distinguished_name      = req_dn
+        echo default_bits            = $ksz
+        echo default_md              = sha256
+        echo utf8                    = yes
 
         echo
         echo "[ v3_ca ]"
@@ -112,14 +119,14 @@ mkpem()
         echo "[ req_dn ]"
         while read l; do echo "$l" ; done < $config
     } | openssl req \
-                -config     /dev/stdin        \
-                -newkey     rsa:$ksz          \
-                -x509                         \
-                -sha256                       \
-                -nodes                        \
-                -days       $(( 365 * $yrs )) \
-                -keyout     "$key"            \
-                -out        "$crt"            \
+                -config     /dev/stdin  \
+                -x509                   \
+                -newkey     rsa         \
+                -nodes                  \
+                -set_serial $sn         \
+                -days       $days       \
+                -keyout     "$key"      \
+                -out        "$crt"      \
                 "$@"
 
     {   echo
