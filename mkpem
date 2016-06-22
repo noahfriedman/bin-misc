@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.11 2016/06/17 18:54:41 friedman Exp $
+# $Id: mkpem,v 1.12 2016/06/21 20:58:08 friedman Exp $
 
 # Commentary:
 
@@ -75,7 +75,7 @@ mkpem()
 
     local ksz=${MKPEM_KEYSIZE:-4096}
     local yrs=${MKPEM_YEARS:-10}
-    local  sn=${MKPEM_SERIAL:-`TZ=UTC date +'%Y%m%d%H%M%S'`}
+    local  sn=${MKPEM_SERIAL:-`TZ=UTC date +"$datefmt"`}
 
     local days=$(( 365 * $yrs ))
 
@@ -148,6 +148,11 @@ main()
     0 ) echo $"Usage: `basename $0` configfile.dn" 1>&2
         exit 1 ;;
   esac
+
+  datefmt='%Y%m%d%H%M%S'
+  if date --help 2>&1 | grep nanoseconds > /dev/null ; then
+      datefmt=$datefmt'%N'
+  fi
 
   config=$1
   shift
