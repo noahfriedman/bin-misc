@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.12 2016/06/21 20:58:08 friedman Exp $
+# $Id: mkpem,v 1.13 2016/06/22 00:43:04 friedman Exp $
 
 # Commentary:
 
@@ -26,6 +26,12 @@
 # Usually you want to list C first and CN last.
 #
 # The v3_ca and alt_names sections are optional.
+
+# To import a web cert into a NSS database:
+#
+#	certutil -d [sql|dbm]:[/dir] -A -n [nickname] -t P -i [file.crt]
+#
+# Use -t CT,C,C for CA certificates.
 
 # Code:
 
@@ -106,14 +112,15 @@ mkpem()
         # Critical means cert should be rejected when used for purposes other
         # than those indicated in this extension.
         #
+        # Settings for CA cert
         #echo basicConstraints       = critical, CA:true, pathlen:0
-        echo  basicConstraints       = critical, CA:false
-
         #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
-        echo keyUsage                = critical, keyEncipherment, keyCertSign
-
         #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
-        echo  extendedKeyUsage       = critical, serverAuth
+
+        # Settings for basic web server cert
+        echo basicConstraints        = CA:false
+        echo keyUsage                = digitalSignature, keyEncipherment
+        echo extendedKeyUsage        = serverAuth
 
         # Don't use nsCertType; deprecated.
         #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
