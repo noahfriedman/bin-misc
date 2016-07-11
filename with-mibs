@@ -1,0 +1,93 @@
+#!/bin/sh
+# $Id$
+
+mibdirs()
+{
+    # By default earlier found mibs take precedence
+    find $HOME/.snmp/mibs              \
+         $HOME/etc/misc/.snmp/mibs     \
+         /usr/share/mibs               \
+         /usr/share/snmp/mibs          \
+                                       \
+         -type d -print 2> /dev/null   \
+                                       \
+        | sed -n                       \
+              -e 'H'                   \
+              -e '${'                  \
+              -e '   g'                \
+              -e '   s/\n/:/g'         \
+              -e '   s/^://'           \
+              -e '   p'                \
+              -e ' }'
+}
+
+need_arg()
+{
+    arg=$1
+    shift
+
+    while :; do
+        case $# in
+            0 ) # If caller is asking about whether -c (community) is
+                # needed, the answer is no for snmp version 3.
+                #
+                # In order for this to be effective, caller should check
+                # for -v first.
+                case $snmpver:$arg in
+                      1:-c ) return 0 ;;
+                     2c:-c ) return 0 ;;
+                      *:-c ) return 1 ;;
+                      *:*  ) return 0 ;;
+                esac
+        esac
+
+        case $1 in
+            -v  ) snmpver=$2      ;;
+            -v* ) snmpver=${1#-v} ;;
+        esac
+
+        case $1 in ${arg}* ) return 1 ;; esac
+
+        shift
+    done
+}
+
+main()
+{
+    prog=$1
+    progname=${prog##*/}
+    shift
+
+     case $progname in
+         snmp*walk ) set : -Cc "$@" ; shift ;;
+     esac
+
+    if need_arg -v "$@"; then
+        case $progname in
+            *bulk* ) set : -v 2c "$@" ;;
+            *      ) set : -v 1  "$@" ;;
+        esac
+        shift
+    fi
+
+    if need_arg -c "$@"; then
+        set : -c public "$@"
+        shift
+    fi
+
+    if need_arg -m "$@"; then
+        set : -m ALL "$@"
+        shift
+    fi
+    # -M -dirs prepends to default path; +dirs appends.
+    if need_arg -M "$@"; then
+        set : -M "-`mibdirs`:." "$@"
+        shift
+    fi
+
+    exec "$prog" "$@"
+}
+
+main "$@"
+
+# eof
