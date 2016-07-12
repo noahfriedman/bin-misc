@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.13 2016/06/22 00:43:04 friedman Exp $
+# $Id: mkpem,v 1.14 2016/07/11 23:41:40 friedman Exp $
 
 # Commentary:
 
@@ -107,7 +107,7 @@ mkpem()
         echo
         echo "[ v3_ca ]"
         echo  subjectKeyIdentifier   = hash
-        echo  authorityKeyIdentifier = keyid:always,issuer:always
+        echo  authorityKeyIdentifier = keyid:always, issuer:always
 
         # Critical means cert should be rejected when used for purposes other
         # than those indicated in this extension.
@@ -117,9 +117,9 @@ mkpem()
         #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
         #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
 
-        # Settings for basic web server cert
+        # Settings for basic self-signed web server cert
         echo basicConstraints        = CA:false
-        echo keyUsage                = digitalSignature, keyEncipherment
+        echo keyUsage                = digitalSignature, keyEncipherment, keyCertSign
         echo extendedKeyUsage        = serverAuth
 
         # Don't use nsCertType; deprecated.
