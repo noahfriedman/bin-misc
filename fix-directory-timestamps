@@ -1,7 +1,7 @@
 #!/bin/sh
-# $Id: fix-directory-timestamps,v 1.7 2007/01/05 03:01:31 friedman Exp $
+# $Id: fix-directory-timestamps,v 1.8 2007/04/09 01:55:50 friedman Exp $
 
-ignore='CVS RCS {arch} .svn _MTN'
+ignore='CVS RCS {arch} .svn _MTN .git .hg'
 ignore_meta='MD5SUM SHA1SUM SHA256SUM TRANS.TBL fonts.dir fonts.scale'
 
 while :; do
