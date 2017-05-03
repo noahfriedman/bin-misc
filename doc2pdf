@@ -1,0 +1,8 @@
+#!/bin/sh
+# $Id$
+
+for doc in "$@"; do
+    run-misc.sh oowriter --convert-to pdf "$doc"
+done
+
+# eof
