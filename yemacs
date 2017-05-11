@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.15 2015/02/06 02:40:46 friedman Exp $
+# $Id: yemacs,v 1.16 2015/02/06 02:42:50 friedman Exp $
 
 client()
 {
     PATH=$ydir/src:$ydir/lib-src:$PATH
     EMACS_SERVER_FILE=gnuedit
     export EMACS_SERVER_FILE
-    exec emacsclient --no-wait --eval "$@" > /dev/null
+    exec emacsclient --quiet --no-wait --eval "$@"
 }
 
 locate_build()
@@ -55,7 +55,8 @@ main()
             case $DISPLAY in
                 '' ) client "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
                 *  ) client "(make-frame-on-display \"$DISPLAY\")"    ;;
-            esac ;;
+            esac > /dev/null ;;
+        -eval ) client "$@" ;;
     esac
 
     YEMACS_EXECDIR=$ydir/src
