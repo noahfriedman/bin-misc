@@ -1,0 +1,75 @@
+#!/bin/sh
+# fix-tar-timestamps --- set mtime of tar file to most recent member mtime
+# Author: Noah Friedman <friedman@splode.com>
+# Public domain
+
+# $Id$
+
+# Currently this is only reliable on gnuish systems because it depends on
+# the date parsing capabilities of the -d option to GNU `touch'.
+
+recent_gnu_tar_p()
+{
+    ${TAR-tar} --help 2>&1 | grep '.--full-time' > /dev/null
+}
+
+tartv()
+{
+    case $1 in
+            *.gz  | *.tgz ) gzip  -dc "$1" ;;
+            *.bz2 | *.tbz ) bzip2 -dc "$1" ;;
+            *.xz  | *.txz ) xz    -dc "$1" ;;
+            * ) cat "$1" ;;
+    esac | ${GTAR-tar} $gtar_opts -tvf -
+}
+
+tstamp()
+{
+    one=
+    case $1 in
+        -1 ) one='-e 1!d'; shift ;;
+    esac
+
+    sed -n $one \
+        -e '/^.* \([0-9][0-9]*-[-0-9]* [0-9][:0-9]*\) .*/{s//\1/p;n;}' \
+        -e '/^.* \([A-Z][a-z]*\)  *\([0-9][0-9]*\)  *\([0-9][0-9]*:[0-9]*\)  *\([0-9][0-9]*\) .*/{
+                s//\4-\1-\2 \3/
+                s/-\([0-9]\) /-0\1 /g
+                b c
+            }' \
+        -e '/^.* \([A-Z][a-z]*\)  *\([0-9][0-9]*\)  *\([0-9][0-9]*\) .*/{
+                s//\3-\1-\2/
+                s/-\([0-9]\)$/-0\1/
+                b c
+            }' \
+        -e 'd' \
+        -e ':c
+            s/Jan/01/; s/Feb/02/; s/Mar/03/; s/Apr/04/
+            s/May/05/; s/Jun/06/; s/Jul/07/; s/Aug/08/
+            s/Sep/09/; s/Oct/10/; s/Nov/11/; s/Dec/12/
+            p;n;' \
+        "$@"
+}
+
+main()
+{
+    case $1 in
+        -1 ) fast=t ; shift ;;
+    esac
+
+    if recent_gnu_tar_p; then
+        gtar_opts='--full-time'
+    fi
+
+    for file in "$@"; do
+        case $fast in
+            t ) ts=`tartv "$file" | tstamp -1` ;;
+            * ) ts=`tartv "$file" | tstamp | sort -rn | sed -e 1q` ;;
+        esac
+        ${GTOUCH-touch} -d "$ts" "$file"
+    done
+}
+
+main "$@"
+
+# eof
