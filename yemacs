@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.16 2015/02/06 02:42:50 friedman Exp $
+# $Id: yemacs,v 1.17 2017/05/11 19:56:29 friedman Exp $
 
 client()
 {
@@ -56,6 +56,13 @@ main()
                 '' ) client "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
                 *  ) client "(make-frame-on-display \"$DISPLAY\")"    ;;
             esac > /dev/null ;;
+
+        -workspaces )
+            client "(let ((f (make-frame-on-display \"$DISPLAY\")))
+                      (with-selected-frame f
+                        (make-my-workspace-frames))
+                      (delete-frame f))" ;;
+
         -eval ) client "$@" ;;
     esac
 
