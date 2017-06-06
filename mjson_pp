@@ -1,0 +1,10 @@
+#!/bin/sh
+# $Id$
+
+exec json_pp \
+     -f json \
+     -t json \
+     -json_opt utf8,pretty,indent,space_before,space_after,relaxed,canonical,allow_singlequote,allow_barekey,allow_bignum \
+     "$@"
+
+# eof
