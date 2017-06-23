@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.14 2016/07/11 23:41:40 friedman Exp $
+# $Id: mkpem,v 1.15 2016/07/12 00:52:58 friedman Exp $
 
 # Commentary:
 
@@ -69,6 +69,56 @@ make_backup_file_name()
     echo "$result"
 }
 
+backup_files()
+{
+    for f in "$@"; do
+        if [ -f "$f" ]; then
+            bck=`make_backup_file_name "$f"`
+            echo "Moving existing $f -> $bck"
+            mv "$f" "$bck"
+        fi
+    done
+}
+
+printconf()
+{
+    echo "[ req ]"
+    echo RANDFILE                = /dev/urandom
+    echo prompt                  = no
+    echo x509_extensions         = v3_ca
+    echo req_extensions          = v3_ca
+    echo distinguished_name      = req_dn
+    echo default_bits            = ${MKPEM_KEYSIZE:-4096}
+    echo default_md              = sha256
+    echo utf8                    = yes
+    echo string_mask             = utf8only
+
+    echo
+    echo "[ v3_ca ]"
+    echo  subjectKeyIdentifier   = hash
+
+    # Critical means cert should be rejected when used for purposes other
+    # than those indicated in this extension.
+    #
+    # Settings for CA cert
+    #echo basicConstraints       = critical, CA:true, pathlen:0
+    #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
+    #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
+
+    # Settings for basic self-signed web server cert
+    echo basicConstraints        = CA:false
+    echo keyUsage                = digitalSignature, keyEncipherment, keyCertSign
+    echo extendedKeyUsage        = serverAuth
+
+    # Don't use nsCertType; deprecated.
+    #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
+    #echo nsCertType             = critical, server
+
+    echo
+    echo "[ req_dn ]"
+    while read l; do echo "$l" ; done < $1
+}
+
 mkpem()
 {
     local config=$1
@@ -79,77 +129,74 @@ mkpem()
     local crt=$base.crt
     local key=$base.key
 
-    local ksz=${MKPEM_KEYSIZE:-4096}
     local yrs=${MKPEM_YEARS:-10}
     local  sn=${MKPEM_SERIAL:-`TZ=UTC date +"$datefmt"`}
 
     local days=$(( 365 * $yrs ))
 
-    for f in $pem $crt $key ; do
-        if [[ -f $f ]]; then
-            bck=`make_backup_file_name "$f"`
-            echo "Moving existing $f -> $bck"
-            mv "$f" "$bck"
-        fi
-    done
+    backup_files "$pem" "$crt" "$key"
 
     {
-        echo "[ req ]"
-        echo RANDFILE                = /dev/urandom
-        echo prompt                  = no
-        echo x509_extensions         = v3_ca
-        echo distinguished_name      = req_dn
-        echo default_bits            = $ksz
-        echo default_md              = sha256
-        echo utf8                    = yes
-        echo string_mask             = utf8only
-
-        echo
+        printconf "$config"
+        # This cannot be specified for CSRs, so add it here:
         echo "[ v3_ca ]"
-        echo  subjectKeyIdentifier   = hash
-        echo  authorityKeyIdentifier = keyid:always, issuer:always
-
-        # Critical means cert should be rejected when used for purposes other
-        # than those indicated in this extension.
-        #
-        # Settings for CA cert
-        #echo basicConstraints       = critical, CA:true, pathlen:0
-        #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
-        #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
-
-        # Settings for basic self-signed web server cert
-        echo basicConstraints        = CA:false
-        echo keyUsage                = digitalSignature, keyEncipherment, keyCertSign
-        echo extendedKeyUsage        = serverAuth
-
-        # Don't use nsCertType; deprecated.
-        #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
-        #echo nsCertType             = critical, server
-
-        echo
-        echo "[ req_dn ]"
-        while read l; do echo "$l" ; done < $config
-    } | openssl req \
-                -config     /dev/stdin  \
-                -x509                   \
-                -newkey     rsa         \
-                -nodes                  \
-                -set_serial $sn         \
-                -days       $days       \
-                -keyout     "$key"      \
-                -out        "$crt"      \
-                "$@"
+        echo "authorityKeyIdentifier = keyid:always, issuer:always"
+    } \
+        | openssl req \
+                  -config     /dev/stdin  \
+                  -batch                  \
+                  -x509                   \
+                  -newkey     rsa         \
+                  -nodes                  \
+                  -set_serial $sn         \
+                  -days       $days       \
+                  -keyout     "$key"      \
+                  -out        "$crt"      \
+                  "$@"
 
     {   echo
-        openssl x509 -in "$crt" -noout -text
+        openssl x509 -in "$crt" -noout -text \
+                -nameopt RFC2253 \
+                -certopt ext_parse
     } >> "$crt"
 
     cat "$key" "$crt" > "$pem"
 }
 
+mkcsr()
+{
+    local config=$1
+    local base=$2
+    shift; shift
+
+    backup_files "$base.key" "$base.csr"
+
+    printconf "$config" \
+        | openssl req \
+                  -config     /dev/stdin   \
+                  -batch                   \
+                  -new                     \
+                  -newkey     rsa          \
+                  -nodes                   \
+                  -keyout     "$base.key"  \
+                  -out        "$base.csr"  \
+                  "$@"
+
+    {   echo
+        openssl req -in "$base.csr" -text -verify -noout \
+                -nameopt RFC2253 \
+                -reqopt  ext_parse
+    } >> "$base.csr"
+}
+
 main()
 {
   umask 077
+
+  op=pem
+  case $1 in
+      csr | -csr | --csr ) op=csr ; shift ;;
+  esac
 
   case $# in
     0 ) echo $"Usage: `basename $0` configfile.dn" 1>&2
@@ -163,8 +210,8 @@ main()
 
   config=$1
   shift
-  basename=`basename $config .dn`
-  mkpem "$config" "$basename" "$@"
+  basename=`basename "$config" .dn`
+  mk$op "$config" "$basename" "$@"
 }
 
 main "$@"
