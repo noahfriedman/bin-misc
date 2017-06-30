@@ -4,7 +4,7 @@
 # Created: 2017-06-29
 # Public domain
 
-# $Id$
+# $Id: emacs-symbound,v 1.1 2017/06/30 02:13:20 friedman Exp $
 
 # Commentary:
 
@@ -16,26 +16,40 @@
 # prints out a list of binding types each symbol on the command line has.
 # For example:
 #
-#	$ emacs-symbound with-current-buffer save-mark-and-excursion
-#	("26.0.50" with-current-buffer (macro plist))
-#	("25.2.1" with-current-buffer (macro plist))
-#	("24.5.1" with-current-buffer (macro plist))
-#	("23.4.1" with-current-buffer (macro plist))
-#	("22.3.1" with-current-buffer (macro plist))
-#	("21.4.1" with-current-buffer (macro plist))
-#	("20.7.1" with-current-buffer (macro plist))
-#	("19.34.1" with-current-buffer nil)
-#	("18.59.1" with-current-buffer nil)
+#	$ emacs-symbound with-current-buffer sit-for
+#	("26.0.50"
+#	 (with-current-buffer macro plist)
+#	 (sit-for function))
 #
-#	("26.0.50" save-mark-and-excursion (macro plist))
-#	("25.2.1" save-mark-and-excursion (macro))
-#	("24.5.1" save-mark-and-excursion nil)
-#	("23.4.1" save-mark-and-excursion nil)
-#	("22.3.1" save-mark-and-excursion nil)
-#	("21.4.1" save-mark-and-excursion nil)
-#	("20.7.1" save-mark-and-excursion nil)
-#	("19.34.1" save-mark-and-excursion nil)
-#	("18.59.1" save-mark-and-excursion nil)
+#	("25.2.1"
+#	 (with-current-buffer macro plist)
+#	 (sit-for function))
+#
+#	("24.5.1"
+#	 (with-current-buffer macro plist)
+#	 (sit-for function))
+#
+#	("23.4.1"
+#	 (with-current-buffer macro plist)
+#	 (sit-for function))
+#
+#	("22.3.1"
+#	 (with-current-buffer macro plist)
+#	 (sit-for function))
+#
+#	("21.4.1"
+#	 (with-current-buffer macro plist)
+#	 (sit-for subr))
+#
+#	("20.7.1"
+#	 (with-current-buffer macro plist)
+#	 (sit-for subr))
+#
+#	("19.34.1"
+#	 (with-current-buffer nil)
+#	 (sit-for subr))
+#
+#	(18.59.1 (with-current-buffer nil) (sit-for subr))
 
 # By default this script only looks for commands starting with "emacs". You
 # can set the environment variable EMACSNAME to xemacs to test that variant.
@@ -50,42 +64,51 @@ main()
                             [18]='-q -l /dev/stdin -f eval-current-buffer')
 
     template="
-      (let ((sym '%s)
+      (let ((outfn '%s)
+            (symlist (nreverse '(%s)))
             (result nil))
-        (if (symbol-plist sym)
-            (setq result (cons 'plist result)))
+        (while symlist
+          (let ((sym (car symlist))
+                (cells nil))
+            (setq symlist (cdr symlist))
 
-        (if (fboundp sym)
-            (let* ((symval (symbol-function sym))
-                   (tem (cond ((subrp symval) 'subr)
-                              ((and (consp symval)
-                                    (eq 'macro (car symval)))
-                               'macro)
-                              (t 'function))))
-              (setq result (cons tem result))))
+            (if (symbol-plist sym)
+                (setq cells (cons 'plist cells)))
 
-        (if (boundp sym)
-            (setq result (cons 'variable result)))
+            (if (fboundp sym)
+                (let* ((symval (symbol-function sym))
+                       (tem (cond ((subrp symval) 'subr)
+                                  ((and (consp symval)
+                                        (eq 'macro (car symval)))
+                                   'macro)
+                                  (t 'function))))
+                  (setq cells (cons tem cells))))
 
-        (prin1 (list emacs-version sym result)))"
+            (if (boundp sym)
+                (setq cells (cons 'variable cells)))
 
+            (setq result (cons (cons sym (or cells (list nil))) result))))
+        (funcall outfn (cons emacs-version result)))"
 
-    for symbol in "$@"; do
-        for emacs in "${emacsen[@]}"; do
-            # bash builtin which assigns result to expr
-            printf -v expr "$template" "$symbol"
+    case $# in
+        1 ) outfn=prin1 ;;
+        * ) outfn=pp    ;;
+    esac
 
-            vmajor=${emacs#emacs-}
-            args=${emacs_args[${vmajor%%.*}]}
+    for emacs in "${emacsen[@]}"; do
+        # bash builtin which assigns result to expr
+        printf -v expr "$template" "$outfn" "$*"
 
-            $emacs --batch ${args:--Q} --no-site-file --eval "$expr"
-            case $emacs in
-                xemacs* ) : ;;  # already adds newline
-                * ) echo ;;
-            esac
-        done
-        echo
+        vmajor=${emacs#emacs-}
+        args=${emacs_args[${vmajor%%.*}]}
+
+        $emacs --batch ${args:--Q} --no-site-file --eval "$expr"
+        case $emacs in
+            xemacs* ) : ;;  # already adds newline
+            * ) echo ;;
+        esac
     done
+    echo
 }
 
 find_emacsen()
@@ -107,7 +130,7 @@ find_emacsen()
 # Emacs 18 didn't support -eval
 function emacs-18.59()
 {
-    echo "$expr" | command $emacs -batch $args
+    echo "(fset 'pp 'princ) $expr" | command $emacs -batch $args
 }
 
 main "$@"
