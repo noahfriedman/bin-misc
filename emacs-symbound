@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# emacs-symbound --- test how symbols are bound in different versions of emacs
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2017-06-29
+# Public domain
+
+# $Id$
+
+# Commentary:
+
+# I have a bunch of emacs versions installed so I can test for portability.
+# Frequently the most common thing I need to do is just check if a function
+# or variable actually exists, and how far back.
+
+# This command finds all the versions of emacs in your path it can and
+# prints out a list of binding types each symbol on the command line has.
+# For example:
+#
+#	$ emacs-symbound with-current-buffer save-mark-and-excursion
+#	("26.0.50" with-current-buffer (macro plist))
+#	("25.2.1" with-current-buffer (macro plist))
+#	("24.5.1" with-current-buffer (macro plist))
+#	("23.4.1" with-current-buffer (macro plist))
+#	("22.3.1" with-current-buffer (macro plist))
+#	("21.4.1" with-current-buffer (macro plist))
+#	("20.7.1" with-current-buffer (macro plist))
+#	("19.34.1" with-current-buffer nil)
+#	("18.59.1" with-current-buffer nil)
+#
+#	("26.0.50" save-mark-and-excursion (macro plist))
+#	("25.2.1" save-mark-and-excursion (macro))
+#	("24.5.1" save-mark-and-excursion nil)
+#	("23.4.1" save-mark-and-excursion nil)
+#	("22.3.1" save-mark-and-excursion nil)
+#	("21.4.1" save-mark-and-excursion nil)
+#	("20.7.1" save-mark-and-excursion nil)
+#	("19.34.1" save-mark-and-excursion nil)
+#	("18.59.1" save-mark-and-excursion nil)
+
+# By default this script only looks for commands starting with "emacs". You
+# can set the environment variable EMACSNAME to xemacs to test that variant.
+
+# Code:
+
+main()
+{
+    declare -a emacsen=( yemacs `find_emacsen` )
+    # This is just for emacsen that don't support the defaults
+    declare -A emacs_args=( [21]='-q' [20]='-q' [19]='-q'
+                            [18]='-q -l /dev/stdin -f eval-current-buffer')
+
+    template="
+      (let ((sym '%s)
+            (result nil))
+        (if (symbol-plist sym)
+            (setq result (cons 'plist result)))
+
+        (if (fboundp sym)
+            (let* ((symval (symbol-function sym))
+                   (tem (cond ((subrp symval) 'subr)
+                              ((and (consp symval)
+                                    (eq 'macro (car symval)))
+                               'macro)
+                              (t 'function))))
+              (setq result (cons tem result))))
+
+        (if (boundp sym)
+            (setq result (cons 'variable result)))
+
+        (prin1 (list emacs-version sym result)))"
+
+
+    for symbol in "$@"; do
+        for emacs in "${emacsen[@]}"; do
+            # bash builtin which assigns result to expr
+            printf -v expr "$template" "$symbol"
+
+            vmajor=${emacs#emacs-}
+            args=${emacs_args[${vmajor%%.*}]}
+
+            $emacs --batch ${args:--Q} --no-site-file --eval "$expr"
+            case $emacs in
+                xemacs* ) : ;;  # already adds newline
+                * ) echo ;;
+            esac
+        done
+        echo
+    done
+}
+
+find_emacsen()
+{
+    declare -a dirs=(${PATH//:/ })
+    declare -A result
+    for dir in "${dirs[@]}"; do
+        for file in "${dir:-.}"/${EMACSNAME-emacs}-[0-9]* ; do
+            test -x "$file" || continue
+            result[${file##*/}]=1  # strip path
+        done
+    done
+
+    for file in "${!result[@]}"; do
+        echo "$file"
+    done | sort -t - -k2,2rn
+}
+
+# Emacs 18 didn't support -eval
+function emacs-18.59()
+{
+    echo "$expr" | command $emacs -batch $args
+}
+
+main "$@"
+
+# eof
