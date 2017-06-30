@@ -4,7 +4,7 @@
 # Created: 2017-06-29
 # Public domain
 
-# $Id: emacs-symbound,v 1.1 2017/06/30 02:13:20 friedman Exp $
+# $Id: emacs-symbound,v 1.2 2017/06/30 02:57:53 friedman Exp $
 
 # Commentary:
 
@@ -130,7 +130,7 @@ find_emacsen()
 # Emacs 18 didn't support -eval
 function emacs-18.59()
 {
-    echo "(fset 'pp 'princ) $expr" | command $emacs -batch $args
+    echo "(fset 'pp 'prin1) $expr" | command $emacs -batch $args
 }
 
 main "$@"
