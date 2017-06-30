@@ -4,7 +4,7 @@
 # Created: 2017-06-29
 # Public domain
 
-# $Id: emacs-symbound,v 1.2 2017/06/30 02:57:53 friedman Exp $
+# $Id: emacs-symbound,v 1.3 2017/06/30 03:01:01 friedman Exp $
 
 # Commentary:
 
@@ -49,7 +49,7 @@
 #	 (with-current-buffer nil)
 #	 (sit-for subr))
 #
-#	(18.59.1 (with-current-buffer nil) (sit-for subr))
+#	("18.59.1" (with-current-buffer nil) (sit-for subr))
 
 # By default this script only looks for commands starting with "emacs". You
 # can set the environment variable EMACSNAME to xemacs to test that variant.
