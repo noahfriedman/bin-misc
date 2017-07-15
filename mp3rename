@@ -1,0 +1,21 @@
+#!/bin/sh
+# $Id$
+
+for f in "$@"; do
+    case $f in
+        */* ) dir=${f%/*}/ base=${f##*/} ;;
+        *   ) dir= base=$f ;;
+    esac
+
+    ext=${f##*.}
+    #fmt="General;%Performer% - %Album% (Disc %Part/Position% of %Part/Position_Total%) - %Track/Position% - %Track%.$ext"
+    fmt="General;%Performer% - %Album% - %Track/Position% - %Track%.$ext"
+    new=`mediainfo --Output="$fmt" "$f" \
+            | sed -e 's/ - \([0-9]\) - / - 0\1 - /' \
+                  -e 's/\//_/g'`
+    case "$new" in "$base" ) continue ;; esac
+    echo \""$f"\" "=>" \""$dir$new"\"
+    mv -i "$f" "$dir$new"
+done | fmtcols -s '=>' -S '=>'
+
+# eof
