@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: pem-fingerprint,v 1.1 2014/01/09 22:29:39 friedman Exp $
+# $Id: pem-fingerprint,v 1.2 2014/01/20 02:48:36 friedman Exp $
 
 fp()
 {
@@ -13,7 +13,7 @@ fp()
         echo
     fi | sed 's/^\([^ =]*\)=\([^ ]\)/\1 = \2/'
 
-    for type in md5 sha1; do
+    for type in md5 sha1 sha256; do
         openssl x509 -in "$1" -noout -fingerprint -$type
     done | sed -e 's/Fingerprint=//'
 }
