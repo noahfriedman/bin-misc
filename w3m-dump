@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# $Id$
+
+unset unset ${!LC_*}
+export LANG=C.utf8
+
+user_agent="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:50.0) Gecko/20100101 Firefox/50.0"
+
+flags=( -o display_borders=true
+        -o graphic_char=1
+
+        -o display_link=false
+        -o display_link_number=false
+        -o display_ins_del=1
+        -o ignore_null_img_alt=false
+        -o pseudo_inlines=false
+
+        -o display_charset=utf-8
+        -o document_charset=utf-8
+        -o system_charset=utf-8
+        -o alt_entity=false
+
+        -o tabstop=8
+        -o fold_line=false
+
+        -o use_cookie=false
+        -o accept_cookie=false
+        -o ssl_verify_server=false
+        -o user_agent="$user_agent"
+
+        -config /dev/null
+
+        -cols 78
+        -dump
+      )
+
+exec w3m "${flags[@]}" "$@"
+
+# eof
