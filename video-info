@@ -1,0 +1,9 @@
+#!/bin/sh
+# $Id$
+
+for f in "$@"; do
+    ffprobe -hide_banner "$f"
+    test $# -gt 1 && echo
+done
+
+# eof
