@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.15 2016/07/12 00:52:58 friedman Exp $
+# $Id: mkpem,v 1.16 2017/06/23 00:24:25 friedman Exp $
 
 # Commentary:
 
@@ -35,6 +35,55 @@
 
 # Code:
 
+apush() { eval "$1=(\"\${$1[@]}\" \"\${@:2}\")"; }
+
+confparam()
+{
+    declare s='[ 	]*' # SPC TAB
+
+    declare -a expr
+    case ${2+isset} in
+        isset )
+            apush expr -e "1,/^$s\[$s$2$s\]/d"
+            apush expr -e "/^$s\[.*\]/q" ;;
+    esac
+    apush expr -e "/^$s$1$s=$s\(.*\)/{s//\1/;s/$s\$//;p;q;}"
+    apush expr -e "/^$s\($1\)$s\$/{s//\1/p;q;}"
+
+    sed -n "${expr[@]}" "$config"
+}
+
+# For any options not given explicitly, see if they are set in the config.
+# If there isn't one there either, fill in the missing option from defaults.
+fill_options_from_config()
+{
+    declare param
+    declare val
+    for param in "${!default[@]}"; do
+        case ${opt[$param]+isset} in isset ) continue ;; esac
+
+        case $param in
+            task )
+                for param in csr pem ; do
+                    val=$(confparam --$param mkpem_options)
+                    case $val in --$param ) opt[task]=$param; break ;; esac
+                done
+                opt[task]=${default[task]}
+                continue ;;
+        esac
+
+        val=$(confparam    --$param mkpem_options)
+        case $val in       --$param ) opt[$param]=t ; continue ;; esac
+
+        val=$(confparam --no-$param mkpem_options)
+        case $val in    --no-$param ) opt[$param]=f ; continue ;; esac
+
+        opt[$param]=${default[$param]}
+    done
+
+    #declare -p opt # debugging
+}
+
 # Return the next emacs-style backup file name for a given file on disk,
 # based on the VERSION_CONTROL environment variable.
 # `t' or `numbered' means make numeric backup versions unconditionally.
@@ -42,7 +91,7 @@
 # `never' or `simple' means do not make them.
 make_backup_file_name()
 {
-    local name=$1
+    declare name=$1
     shift
 
     case $VERSION_CONTROL in
@@ -73,11 +122,37 @@ backup_files()
 {
     for f in "$@"; do
         if [ -f "$f" ]; then
-            bck=`make_backup_file_name "$f"`
+            bck=$(make_backup_file_name "$f")
             echo "Moving existing $f -> $bck"
             mv "$f" "$bck"
         fi
     done
+}
+
+backup_and_set_keyopts()
+{
+    declare key=$1; shift
+
+    if [ -f "$key" ] && [ ".$opt_newkey" != .t ]; then
+        backup_files "$@"
+        keyopts=( -key "$key" )
+    else
+        declare keyarg=rsa
+        case $openssl_version in
+            0.9.8* )
+                # openssl 0.9.8 requires keysize on cmd line.
+                declare sz=$(confparam default_bits)
+                case $sz in
+                    '' ) sz=${MKPEM_KEYSIZE:-$4096} ;;
+                esac
+                keyarg=rsa:$sz ;;
+        esac
+
+        backup_files "$key" "$@"
+        keyopts=( -newkey "$keyarg"
+                  -keyout "$key"
+                  -nodes )
+    fi
 }
 
 printconf()
@@ -85,8 +160,12 @@ printconf()
     echo "[ req ]"
     echo RANDFILE                = /dev/urandom
     echo prompt                  = no
-    echo x509_extensions         = v3_ca
-    echo req_extensions          = v3_ca
+
+    if [ $opt_extensions != f ]; then
+        echo x509_extensions     = v3_ca
+        echo req_extensions      = v3_ca
+    fi
+
     echo distinguished_name      = req_dn
     echo default_bits            = ${MKPEM_KEYSIZE:-4096}
     echo default_md              = sha256
@@ -116,102 +195,151 @@ printconf()
 
     echo
     echo "[ req_dn ]"
-    while read l; do echo "$l" ; done < $1
+    while read l; do echo "$l" ; done < "$1"
 }
+
+vopenssl() { (set -x; openssl "$@"); }
 
 mkpem()
 {
-    local config=$1
-    local base=$2
-    shift; shift
+    declare config=$1
+    declare base=$2
+    shift 2
 
-    local pem=$base.pem
-    local crt=$base.crt
-    local key=$base.key
+    declare pem=$base.pem
+    declare crt=$base.crt
+    declare key=$base.key
 
-    local yrs=${MKPEM_YEARS:-10}
-    local  sn=${MKPEM_SERIAL:-`TZ=UTC date +"$datefmt"`}
+    declare yrs=${MKPEM_YEARS:-10}
+    declare  sn=${MKPEM_SERIAL:-$(TZ=UTC date +"$datefmt")}
 
-    local days=$(( 365 * $yrs ))
+    declare days=$(( 365 * $yrs ))
 
-    backup_files "$pem" "$crt" "$key"
-
+    backup_and_set_keyopts "$key" "$crt" "$pem"
     {
         printconf "$config"
         # This cannot be specified for CSRs, so add it here:
         echo "[ v3_ca ]"
         echo "authorityKeyIdentifier = keyid:always, issuer:always"
-    } \
-        | openssl req \
-                  -config     /dev/stdin  \
-                  -batch                  \
-                  -x509                   \
-                  -newkey     rsa         \
-                  -nodes                  \
-                  -set_serial $sn         \
-                  -days       $days       \
-                  -keyout     "$key"      \
-                  -out        "$crt"      \
-                  "$@"
+    } | $openssl req \
+                 -config     /dev/stdin  \
+                 -batch                  \
+                 -x509                   \
+                 "${keyopts[@]}"         \
+                 -set_serial $sn         \
+                 -days       $days       \
+                 -out        "$crt"      \
+                 "$@"
 
-    {   echo
-        openssl x509 -in "$crt" -noout -text \
-                -nameopt RFC2253 \
-                -certopt ext_parse
-    } >> "$crt"
-
-    cat "$key" "$crt" > "$pem"
+    if [ -f "$crt" ]; then
+        if [ ".$opt_desc" != .f ]; then
+            {   echo
+                $openssl x509 -in "$crt" -noout -text \
+                         -nameopt RFC2253
+                         -certopt ext_parse
+            } >> "$crt"
+        fi
+        cat "$key" "$crt" > "$pem"
+    else
+        return 1
+    fi
 }
 
 mkcsr()
 {
-    local config=$1
-    local base=$2
-    shift; shift
+    declare config=$1
+    declare base=$2
+    shift 2
 
-    backup_files "$base.key" "$base.csr"
-
+    backup_and_set_keyopts "$base.key" "$base.csr"
     printconf "$config" \
-        | openssl req \
-                  -config     /dev/stdin   \
-                  -batch                   \
-                  -new                     \
-                  -newkey     rsa          \
-                  -nodes                   \
-                  -keyout     "$base.key"  \
-                  -out        "$base.csr"  \
-                  "$@"
+        | $openssl req \
+                   -config     /dev/stdin   \
+                   -batch                   \
+                   "${keyopts[@]}"          \
+                   $opt_asn1kludge          \
+                   -new                     \
+                   -out        "$base.csr"  \
+                   "$@"
 
-    {   echo
-        openssl req -in "$base.csr" -text -verify -noout \
-                -nameopt RFC2253 \
-                -reqopt  ext_parse
-    } >> "$base.csr"
+    if [ -f "$base.csr" ]; then
+        if [ ".$opt_desc" != .f ]; then
+            {   echo
+                $openssl req -in "$base.csr" -noout -text -verify \
+                         -nameopt RFC2253 \
+                         -reqopt  ext_parse
+            } >> "$base.csr"
+        fi
+    else
+        return 1
+    fi
 }
 
 main()
 {
   umask 077
 
-  op=pem
-  case $1 in
-      csr | -csr | --csr ) op=csr ; shift ;;
-  esac
+  declare -A default=([extensions]=t [asn1-kludge]=f [newkey]=f [desc]=t [task]=pem)
+  declare -A opt
+
+  while : ; do
+      case $# in 0) break ;; esac
+
+      # fully qualify abbreviated options
+      declare arg=$1
+      case $arg in
+          -- ) shift; break ;; # Stop option processing
+
+          --c*  ) arg=--csr         ;;    --p*    ) arg=--pem            ;;
+
+          --e*  ) arg=--extensions  ;;    --no-e* ) arg=--no-extensions  ;;
+          --a*  ) arg=--asn1-kludge ;;    --no-a* ) arg=--no-asn1-kludge ;;
+          --ne* ) arg=--newkey      ;;    --no-n* ) arg=--no-newkey      ;;
+          --d*  ) arg=--desc        ;;    --no-d* ) arg=--no-desc        ;;
+
+          -* )
+              echo "$progname: unknown or ambiguous option \`$1'" 1>&2
+              exit 1 ;;
+          * ) break ;;
+      esac
+
+      case $arg in
+          --csr ) opt[task]=csr  ;;
+          --pem ) opt[task]=pem  ;;
+          * )
+              declare field=${1#--}
+              declare bool=t
+              case $field in no-* ) bool=f ; field=${field#no-} ;; esac
+
+              case ${default[$field]+defined} in
+                  defined ) opt[$field]=$bool ;;
+
+                  * ) echo "$progname: unknown option \`$1'" 1>&2
+                      exit 1 ;;
+              esac ;;
+      esac
+      shift
+  done
 
   case $# in
-    0 ) echo $"Usage: `basename $0` configfile.dn" 1>&2
+    0 ) echo $"Usage: $(basename $0) configfile.dn" 1>&2
         exit 1 ;;
   esac
+
+  config=$1
+  shift
+  fill_options_from_config
 
   datefmt='%Y%m%d%H%M%S'
   if date --help 2>&1 | grep nanoseconds > /dev/null ; then
       datefmt=$datefmt'%N'
   fi
 
-  config=$1
-  shift
-  basename=`basename "$config" .dn`
-  mk$op "$config" "$basename" "$@"
+  openssl=${MKPEM_OPENSSL:-openssl}
+  openssl_version=$($openssl version | cut -d' ' -f2)
+
+  basename=$(basename "$config" .dn)
+  mk${opt[task]} "$config" "$basename" "$@"
 }
 
 main "$@"
