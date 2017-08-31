@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.16 2017/06/23 00:24:25 friedman Exp $
+# $Id: mkpem,v 1.17 2017/08/30 03:04:31 friedman Exp $
 
 # Commentary:
 
@@ -61,6 +61,7 @@ fill_options_from_config()
     declare val
     for param in "${!default[@]}"; do
         case ${opt[$param]+isset} in isset ) continue ;; esac
+        opt[$param]=${default[$param]}
 
         case $param in
             task )
@@ -68,7 +69,6 @@ fill_options_from_config()
                     val=$(confparam --$param mkpem_options)
                     case $val in --$param ) opt[task]=$param; break ;; esac
                 done
-                opt[task]=${default[task]}
                 continue ;;
         esac
 
@@ -77,11 +77,9 @@ fill_options_from_config()
 
         val=$(confparam --no-$param mkpem_options)
         case $val in    --no-$param ) opt[$param]=f ; continue ;; esac
-
-        opt[$param]=${default[$param]}
     done
 
-    #declare -p opt # debugging
+    #declare -p opt; exit # debugging
 }
 
 # Return the next emacs-style backup file name for a given file on disk,
@@ -161,7 +159,7 @@ printconf()
     echo RANDFILE                = /dev/urandom
     echo prompt                  = no
 
-    if [ $opt_extensions != f ]; then
+    if [ ${opt[extensions]} != f ]; then
         echo x509_extensions     = v3_ca
         echo req_extensions      = v3_ca
     fi
@@ -195,7 +193,15 @@ printconf()
 
     echo
     echo "[ req_dn ]"
-    while read l; do echo "$l" ; done < "$1"
+    while read l; do
+        # Do not include any [mkpem_options] section because later versions
+        # of openssl do not allow non-assignment lines.
+        case $l in
+            *\[*mkpem_options*\]* )
+                while read l; do case $l in *\[*\]* ) break ;; esac; done ;;
+        esac
+        echo "$l"
+    done < "$1"
 }
 
 vopenssl() { (set -x; openssl "$@"); }
@@ -232,7 +238,7 @@ mkpem()
                  "$@"
 
     if [ -f "$crt" ]; then
-        if [ ".$opt_desc" != .f ]; then
+        if [ ${opt[desc]} != f ]; then
             {   echo
                 $openssl x509 -in "$crt" -noout -text \
                          -nameopt RFC2253
@@ -251,19 +257,22 @@ mkcsr()
     declare base=$2
     shift 2
 
+    declare asn1kludge=-asn1-kludge
+    case ${opt[asn1-kludge]} in f ) asn1kludge=-no-asn1-kludge ;; esac
+
     backup_and_set_keyopts "$base.key" "$base.csr"
     printconf "$config" \
         | $openssl req \
                    -config     /dev/stdin   \
                    -batch                   \
                    "${keyopts[@]}"          \
-                   $opt_asn1kludge          \
+                   $asn1kludge              \
                    -new                     \
                    -out        "$base.csr"  \
                    "$@"
 
     if [ -f "$base.csr" ]; then
-        if [ ".$opt_desc" != .f ]; then
+        if [ ${opt[desc]} != f ]; then
             {   echo
                 $openssl req -in "$base.csr" -noout -text -verify \
                          -nameopt RFC2253 \
