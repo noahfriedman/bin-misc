@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.20 2014/03/18 06:32:32 friedman Exp $
+# $Id: mp3riplabel,v 1.21 2016/04/19 03:10:16 friedman Exp $
 
 # Requires python-eyed3 0.7.5 or later fedora rpm for mp3 files
 # Requires metaflac for flac files
@@ -48,7 +48,7 @@ label_mp3()
     esac
     case $comment_empty:$comment in
         t: | :?* )
-            set fnord --comment=::"$comment" ${1+"$@"}
+            set fnord --comment="$comment" ${1+"$@"}
             shift ;;
     esac
 
@@ -64,9 +64,9 @@ label_mp3()
                     set fnord
                     for tag in $reset_tags ; do
                         case $tag in
-                            TXXX:* ) set "$@" --set-user-text-frame ${tag#TXXX:}: ;;
+                            TXXX:* ) set "$@" --user-text-frame ${tag#TXXX:}: ;;
                             APIC   ) set "$@" --remove-images ;;
-                            *      ) set "$@" --set-text-frame $tag: ;;
+                            *      ) set "$@" --text-frame $tag: ;;
                         esac
                     done
                     shift
@@ -337,14 +337,14 @@ config()
                author=''
                 album=''
 
-                 year=
+                 year=2000-01-01
                 genre=
            defcomment=
 
-          track_total=
+          track_total=01
 
-                 disc=
-           disc_total=
+                 disc=01
+           disc_total=01
 
     front_cover_image=
      back_cover_image=
@@ -354,7 +354,7 @@ config()
     # These are useful if you want to get rid of the track total or disc
     # total, which will not be removed if it already exists, even if the
     # explicit replacement is empty.
-           reset_tags= #'TPOS TRCK'
+           reset_tags='' #'TPOS TRCK'
 
                   ext=mp3
 }
