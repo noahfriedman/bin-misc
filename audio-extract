@@ -1,22 +1,28 @@
 #!/bin/sh
+# $Id$
+
+# Use "-map 0:n -f fmt" to extract other elements.
+# For example "-map 0:4 -f ass" to extract a subtitle stream.
 
 extract()
 {
     infile=$1; shift
+
     ext=`ffprobe -hide_banner "$infile" 2>&1 \
            | sed -ne '/.*Audio: \([^ ,]*\).*/!d' -e 's//\1/p' -e q`
+    case $ext in
+        aac ) ext=m4a ;;
+    esac
 
-    audio=${infile##*/}
-    audio=${audio%.*}.$ext
+    outfile=${infile##*/} outfile=${outfile%.*}.$ext
     ffmpeg -hide_banner \
            -copy_unknown \
-           -v info \
+           -v error \
            -i "$infile" \
            -acodec copy \
-           -f $ext \
            "$@" \
-           "$audio" &&
-        touch -r "$infile" "$audio"
+           "$outfile" \
+        && touch -r "$infile" "$outfile"
 }
 
 main()
@@ -24,6 +30,7 @@ main()
     case $2 in
         -* ) extract "$@" ;;
         *  ) for f in "$@"; do
+                 echo "$f"
                  extract "$f"
              done ;;
     esac
