@@ -52,13 +52,14 @@ use Pod::Usage;
 eval { require Time::HiRes };
 my $have_hires = $@ ? 0 : 1;
 
-
 use FindBin;
 use lib "$FindBin::Bin/../lib/perl";
 use lib "$ENV{HOME}/lib/perl";
 
 use NF::FileUtil    qw(:all);
 use NF::PrintObject qw(:all);
+
+(my $progname = $0) =~ s=.*//==;
 
 my $tmpdir = $ENV{TMPDIR} || "/tmp";
 my $tmpfile = "$tmpdir/mkpem.$$";
@@ -99,9 +100,28 @@ sub parse_options
 }
 
 
+sub _fatal
+{
+  if (@_ && $_[0] =~ /%/)
+    {
+      my $fmt = shift;
+      my $s = sprintf ($fmt, @_);
+      @_ = ($s);
+    }
+  print STDERR join(": ", $progname, @_), "\n";
+  exit (1);
+}
+
+sub xopen
+{
+  return $fh
+    if open (my $fh, $_[0], @_[1 .. $#_]); # filename arg must be expicit
+  return _fatal ("open", $_[0], $!);
+}
+
 sub read_file
 {
-  open (my $fh, $_[0]) || die "$_[0]: $!";
+  my $fh = xopen ($_[0]);
   local $/ = undef;
   scalar <$fh>;
 }
@@ -111,12 +131,11 @@ sub write_file
   my $file = shift;
 
   my $old_umask = umask (077);
-  open (my $fh, "> $file") || die "open rw: $file: $!\n";
+  my $fh = xopen (">", $file);
   umask ($old_umask);
 
   print $fh @_;
-  close ($fh);
-  return 1;
+  return $fh;
 }
 
 sub bt # Like `foo` in bourne shell.
@@ -137,7 +156,7 @@ sub timestamp
   my $hi = &Time::HiRes::clock_gettime (&Time::HiRes::CLOCK_REALTIME);
   my ($nano, $sec) = modf ($hi);
   sprintf ("%s%09.9s",
-           strftime ($fmt, localtime ($sec)),
+           strftime ($fmt, gmtime ($sec)),
            int ($nano * 1_000_000_000));
 }
 
@@ -145,6 +164,46 @@ sub openssl
 {
   my $cmd = $ENV{MKPEM_OPENSSL} || 'openssl';
   bt ($cmd, @_);
+}
+
+sub mkpem
+{
+  my ($config, $base) = (shift, shift);
+
+  my $pem  = "$base.pem";
+  my $crt  = "$base.crt";
+  my $key  = "$base.key";
+
+  my $sn   = $ENV{MKPEM_SERIAL} || timestamp();
+  my $yrs  = $ENV{MKPEM_YEARS} || 10;
+  my $days = 365 * yrs;
+
+  #backup_and_set_keyopts "$key" "$crt" "$pem"
+  #write_config;
+  # This cannot be specified for CSRs, so add it here:
+  #echo "[ v3_ca ]"
+  #echo "authorityKeyIdentifier = keyid:always, issuer:always"
+  openssl(qw(req -config     /dev/stdin
+                 -batch
+                 -x509
+                 "${keyopts[@]}"
+                 -set_serial $sn
+                 -days       $days
+                 -out        "$crt"),
+                 @_));
+
+    if [ -f "$crt" ]; then
+        if [ ${opt[desc]} != f ]; then
+            {   echo
+                $openssl x509 -in "$crt" -noout -text \
+                         -nameopt RFC2253
+                         -certopt ext_parse
+            } >> "$crt"
+        fi
+        cat "$key" "$crt" > "$pem"
+    else
+        return 1
+    fi
 }
 
 sub main
@@ -166,51 +225,52 @@ main (@ARGV);
 
 __DATA__
 
-    echo "[ req ]"
-    echo RANDFILE                = /dev/urandom
-    echo prompt                  = no
+[ req ]
+RANDFILE                = /dev/urandom
+prompt                  = no
 
-    if [ ${opt[extensions]} != f ]; then
-        echo x509_extensions     = v3_ca
-        echo req_extensions      = v3_ca
-    fi
+if [ ${opt[extensions]} != f ]; then
+    echo x509_extensions     = v3_ca
+    echo req_extensions      = v3_ca
+fi
 
-    echo distinguished_name      = req_dn
-    echo default_bits            = ${MKPEM_KEYSIZE:-4096}
-    echo default_md              = sha256
-    echo utf8                    = yes
-    echo string_mask             = utf8only
+distinguished_name      = req_dn
+default_bits            = ${MKPEM_KEYSIZE:-4096}
+default_md              = sha256
+utf8                    = yes
+string_mask             = utf8only
 
-    echo
-    echo "[ v3_ca ]"
-    echo  subjectKeyIdentifier   = hash
 
-    # Critical means cert should be rejected when used for purposes other
-    # than those indicated in this extension.
-    #
-    # Settings for CA cert
-    #echo basicConstraints       = critical, CA:true, pathlen:0
-    #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
-    #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
+[ v3_ca ]
+subjectKeyIdentifier   = hash
 
-    # Settings for basic self-signed web server cert
-    echo basicConstraints        = CA:false
-    echo keyUsage                = digitalSignature, keyEncipherment, keyCertSign
-    echo extendedKeyUsage        = serverAuth
+# Critical means cert should be rejected when used for purposes other
+# than those indicated in this extension.
+#
+# Settings for CA cert
+#basicConstraints       = critical, CA:true, pathlen:0
+#keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
+#extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
 
-    # Don't use nsCertType; deprecated.
-    #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
-    #echo nsCertType             = critical, server
+# Settings for basic self-signed web server cert
+basicConstraints        = CA:false
+keyUsage                = digitalSignature, keyEncipherment, keyCertSign
+extendedKeyUsage        = serverAuth
 
-    echo
-    echo "[ req_dn ]"
-    while read l; do
-        # Do not include any [mkpem_options] section because later versions
-        # of openssl do not allow non-assignment lines.
-        case $l in
-            *\[*mkpem_options*\]* )
-                while read l; do case $l in *\[*\]* ) break ;; esac; done ;;
-        esac
-        echo "$l"
-    done < "$1"
-}
+# Don't use nsCertType; deprecated.
+#nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
+#nsCertType             = critical, server
+
+[ req_dn ]
+
+while read l; do
+    # Do not include any [mkpem_options] section because later versions
+    # of openssl do not allow non-assignment lines.
+    case $l in
+        *\[*mkpem_options*\]* )
+            while read l; do case $l in *\[*\]* ) break ;; esac; done ;;
+    esac
+    echo "$l"
+done < "$1"
+
+# eof
