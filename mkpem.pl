@@ -131,7 +131,7 @@ sub write_file
   my $file = shift;
 
   my $old_umask = umask (077);
-  my $fh = xopen (">", $file);
+  my $fh = xopen (">>", $file);
   umask ($old_umask);
 
   print $fh @_;
@@ -141,7 +141,7 @@ sub write_file
 sub bt # Like `foo` in bourne shell.
 {
   local $SIG{__WARN__} = sub { 0 };
-  open (my $fh, "-|", @_) || die "exec: $_[0]: $!\n";
+  open (my $fh, "-|", @_) || _fatal ("exec", $_[0], $!);
 
   local $/ = undef;
   chomp (local $_ = <$fh>);
@@ -183,17 +183,19 @@ sub mkpem
   # This cannot be specified for CSRs, so add it here:
   #echo "[ v3_ca ]"
   #echo "authorityKeyIdentifier = keyid:always, issuer:always"
-  openssl(qw(req -config     /dev/stdin
-                 -batch
-                 -x509
-                 "${keyopts[@]}"
-                 -set_serial $sn
-                 -days       $days
-                 -out        "$crt"),
-                 @_));
+  openssl ('req',
+           '-config',       $tmpfile,
+           '-batch',
+           '-x509',
+           "${keyopts[@]}",
+           '-set_serial',   $sn,
+           '-days',         $days,
+           '-out',          $crt,
+           @_);
 
-    if [ -f "$crt" ]; then
-        if [ ${opt[desc]} != f ]; then
+  if (-f $crt)
+    {
+      if [ ${opt[desc]} != f ]; then
             {   echo
                 $openssl x509 -in "$crt" -noout -text \
                          -nameopt RFC2253
