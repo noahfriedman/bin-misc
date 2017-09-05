@@ -1,0 +1,34 @@
+#!/bin/sh
+
+extract()
+{
+    infile=$1; shift
+    ext=`ffprobe -hide_banner "$infile" 2>&1 \
+           | sed -ne '/.*Audio: \([^ ,]*\).*/!d' -e 's//\1/p' -e q`
+
+    audio=${infile##*/}
+    audio=${audio%.*}.$ext
+    ffmpeg -hide_banner \
+           -copy_unknown \
+           -v info \
+           -i "$infile" \
+           -acodec copy \
+           -f $ext \
+           "$@" \
+           "$audio" &&
+        touch -r "$infile" "$audio"
+}
+
+main()
+{
+    case $2 in
+        -* ) extract "$@" ;;
+        *  ) for f in "$@"; do
+                 extract "$f"
+             done ;;
+    esac
+}
+
+main "$@"
+
+# eof
