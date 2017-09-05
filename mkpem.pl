@@ -163,3 +163,54 @@ sub main
 main (@ARGV);
 
 # eof
+
+__DATA__
+
+    echo "[ req ]"
+    echo RANDFILE                = /dev/urandom
+    echo prompt                  = no
+
+    if [ ${opt[extensions]} != f ]; then
+        echo x509_extensions     = v3_ca
+        echo req_extensions      = v3_ca
+    fi
+
+    echo distinguished_name      = req_dn
+    echo default_bits            = ${MKPEM_KEYSIZE:-4096}
+    echo default_md              = sha256
+    echo utf8                    = yes
+    echo string_mask             = utf8only
+
+    echo
+    echo "[ v3_ca ]"
+    echo  subjectKeyIdentifier   = hash
+
+    # Critical means cert should be rejected when used for purposes other
+    # than those indicated in this extension.
+    #
+    # Settings for CA cert
+    #echo basicConstraints       = critical, CA:true, pathlen:0
+    #echo keyUsage               = critical, digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly
+    #echo extendedKeyUsage       = critical, serverAuth, clientAuth, codeSigning, emailProtection, timeStamping, msSGC, nsSGC
+
+    # Settings for basic self-signed web server cert
+    echo basicConstraints        = CA:false
+    echo keyUsage                = digitalSignature, keyEncipherment, keyCertSign
+    echo extendedKeyUsage        = serverAuth
+
+    # Don't use nsCertType; deprecated.
+    #echo nsCertType             = critical, sslCA, emailCA, client, server, email, objsign
+    #echo nsCertType             = critical, server
+
+    echo
+    echo "[ req_dn ]"
+    while read l; do
+        # Do not include any [mkpem_options] section because later versions
+        # of openssl do not allow non-assignment lines.
+        case $l in
+            *\[*mkpem_options*\]* )
+                while read l; do case $l in *\[*\]* ) break ;; esac; done ;;
+        esac
+        echo "$l"
+    done < "$1"
+}
