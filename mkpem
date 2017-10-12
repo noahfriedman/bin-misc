@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.17 2017/08/30 03:04:31 friedman Exp $
+# $Id: mkpem,v 1.18 2017/08/31 21:55:01 friedman Exp $
 
 # Commentary:
 
@@ -259,6 +259,10 @@ mkcsr()
 
     declare asn1kludge=-asn1-kludge
     case ${opt[asn1-kludge]} in f ) asn1kludge=-no-asn1-kludge ;; esac
+    case $openssl_version in
+        0.9.* | 1.0.* ) : ;;
+        * ) asn1kludge= ;; # option dropped in 1.1.0
+    esac
 
     backup_and_set_keyopts "$base.key" "$base.csr"
     printconf "$config" \
