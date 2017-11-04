@@ -1,0 +1,6 @@
+#!/bin/sh
+# $Id$
+
+xpdf -fullscreen -z width "$@" &
+
+# eof
