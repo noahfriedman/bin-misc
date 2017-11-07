@@ -1,0 +1,13 @@
+#!/bin/bash
+
+opt=( --no-split
+      --paragraph-indent=none
+      --footnote-style=end
+      --fill-column=76
+      --no-warn
+      #--no-validate
+    )
+
+exec makeinfo "${opt[@]}" "$@"
+
+# eof
