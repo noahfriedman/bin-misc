@@ -1,0 +1,10 @@
+#!/bin/sh
+# $Id$
+
+for pdf in "$@"; do
+    tm=`pdfinfo "$pdf" | awk -F':        ' '/ModDate:/ { print $2}'`
+    case $tm in
+        "" ) continue ;;
+    esac
+    touch -d "$tm" "$pdf"
+done
