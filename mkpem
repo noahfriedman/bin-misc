@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: mkpem,v 1.18 2017/08/31 21:55:01 friedman Exp $
+# $Id: mkpem,v 1.19 2017/10/12 01:08:36 friedman Exp $
 
 # Commentary:
 
@@ -241,7 +241,7 @@ mkpem()
         if [ ${opt[desc]} != f ]; then
             {   echo
                 $openssl x509 -in "$crt" -noout -text \
-                         -nameopt RFC2253
+                         -nameopt RFC2253 \
                          -certopt ext_parse
             } >> "$crt"
         fi
