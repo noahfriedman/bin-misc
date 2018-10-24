@@ -1,0 +1,321 @@
+#!/usr/bin/env perl
+# xdokey --- translate text input to keysym sequences xdotool understands
+
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2018-10-23
+# Public domain
+
+# $Id$
+
+# Commentary:
+
+# The `xdotool` command doesn't apply any modifiers to characters. That
+# means trying to send ':' will actually send ';' because no shift was
+# specified.  Likewise for punctuation characters like '?', '!', etc.
+# This makes the "xdotool type" command particularly unhelpful.
+#
+# This program reads an input script and converts it to the appropriate
+# xkeysym codes and modifier combinations so that xdotool can send the
+# right characters.
+#
+# Example:
+
+# 	#!/bin/sh
+# 	vm=$1
+# 	shift
+# 	set -x
+# 	vsphere-vm-modify to-vm -c CLUSTER -r POOL $vm
+# 	vsphere-vm-modify network -l 'VLAN 42' -n 1 $vm
+# 	vsphere-vm-modify boot-options -e $vm
+# 	with -N vsphere-vmrc $vm
+# 	vsphere-vm-power on $vm
+# 	# Now run the script below after vmplayer window starts
+# 	# Once finished, run:
+#	# 	vsphere-vm-modify to-template $vm
+
+#	#!/bin/sh
+#	# Send a sequence of commands to a vmplayer window after the guest
+#	# vm has booted in emergency mode or single user.
+#	script='
+#	PATH=/sbin:/usr/sbin:$PATH
+#	modprobe vmxnet3
+#	ip addr add 10.5.20.252/24 brd + dev eth0
+#	ip route add default via 10.5.20.1
+#	mount -o remount,rw /
+#	mount -o ro,nolock 10.5.21.253:/home /home
+#	/home/noahf/modify-template
+#	umount /home
+#	umount /
+#	sync
+#	sleep 2
+#	halt -npf
+#	'
+#	orig=`xdotool getwindowfocus`
+#	w=`xdotool search --class Vmplayer | wc -l`
+#	xdotool search --class Vmplayer windowfocus --sync %$w
+#	xdotool key `echo "$script" | xdokey` Return
+#	xdotool key ctrl+alt+shift
+#	xdotool windowfocus --sync $orig
+
+# Code:
+
+use strict;
+
+sub make_keytbl
+{
+  my $fh = q{DATA}; # Read in section from __DATA__ at end of file.
+  my $fhstart = tell $fh ;
+  my %data;
+  while ( local $_ = <$fh> )
+    {
+      next if /^\x0c/;
+      s/\s*(?:$|#.*)//;
+      next unless m/^\s*(\S+)\s+(.+)/;
+      $data{ hex($1) } = $2;
+    }
+  seek( $fh, $fhstart, 0 );
+  return \%data;
+}
+
+sub main
+{
+  my $key = make_keytbl();
+  my @c;
+
+  { undef $/; $_ = <>; }
+  while (/(.)/gs) { push @c, $key->{ ord( $1 ) } }
+  print "@c\n";
+}
+
+main (@ARGV);
+
+__DATA__
+
+01	ctrl+a
+02	ctrl+b
+03	ctrl+c
+04	ctrl+d
+05	ctrl+e
+06	ctrl+f
+07	ctrl+g
+08	BackSpace
+09	Tab
+0a	Return
+0b	ctrl+k
+0c	ctrl+l
+0d	ctrl+m
+0e	ctrl+n
+0f	ctrl+o
+10	ctrl+p
+11	ctrl+q
+12	ctrl+r
+13	ctrl+s
+14	ctrl+t
+15	ctrl+u
+16	ctrl+v
+17	ctrl+w
+18	ctrl+x
+19	ctrl+y
+1a	ctrl+z
+1b	Escape
+1c	ctrl+backslash
+1d	ctrl+bracketright
+1e	ctrl+shift+asciicircum
+1f	ctrl+shift+underscore
+20	space
+21	shift+exclam
+22	shift+quotedbl
+23	shift+numbersign
+24	shift+dollar
+25	shift+percent
+26	shift+ampersand
+27	shift+apostrophe
+28	shift+parenleft
+29	shift+parenright
+2A	shift+asterisk
+2B	shift+plus
+2C	comma
+2D	minus
+2E	period
+2F	slash
+30	0
+31	1
+32	2
+33	3
+34	4
+35	5
+36	6
+37	7
+38	8
+39	9
+3A	shift+colon
+3B	semicolon
+3C	shift+less
+3D	equal
+3E	shift+greater
+3F	shift+question
+40	shift+at
+41	shift+A
+42	shift+B
+43	shift+C
+44	shift+D
+45	shift+E
+46	shift+F
+47	shift+G
+48	shift+H
+49	shift+I
+4A	shift+J
+4B	shift+K
+4C	shift+L
+4D	shift+M
+4E	shift+N
+4F	shift+O
+50	shift+P
+51	shift+Q
+52	shift+R
+53	shift+S
+54	shift+T
+55	shift+U
+56	shift+V
+57	shift+W
+58	shift+X
+59	shift+Y
+5A	shift+Z
+5B	bracketleft
+5C	backslash
+5D	bracketright
+5E	shift+asciicircum
+5F	shift+underscore
+60	grave
+61	a
+62	b
+63	c
+64	d
+65	e
+66	f
+67	g
+68	h
+69	i
+6A	j
+6B	k
+6C	l
+6D	m
+6E	n
+6F	o
+70	p
+71	q
+72	r
+73	s
+74	t
+75	u
+76	v
+77	w
+78	x
+79	y
+7A	z
+7B	shift+braceleft
+7C	shift+bar
+7D	shift+braceright
+7E	shift+asciitilde
+A0	nobreakspace
+A1	exclamdown
+A2	cent
+A3	sterling
+A4	currency
+A5	yen
+A6	brokenbar
+A7	section
+A8	diaeresis
+A9	copyright
+AA	ordfeminine
+AB	guillemotleft
+AC	notsign
+AD	hyphen
+AE	registered
+AF	macron
+B0	degree
+B1	plusminus
+B2	twosuperior
+B3	threesuperior
+B4	acute
+B5	mu
+B6	paragraph
+B7	periodcentered
+B8	cedilla
+B9	onesuperior
+BA	masculine
+BB	guillemotright
+BC	onequarter
+BD	onehalf
+BE	threequarters
+BF	questiondown
+C0	Agrave
+C1	Aacute
+C2	Acircumflex
+C3	Atilde
+C4	Adiaeresis
+C5	Aring
+C6	AE
+C7	Ccedilla
+C8	Egrave
+C9	Eacute
+CA	Ecircumflex
+CB	Ediaeresis
+CC	Igrave
+CD	Iacute
+CE	Icircumflex
+CF	Idiaeresis
+D0	ETH
+D0	Eth
+D1	Ntilde
+D2	Ograve
+D3	Oacute
+D4	Ocircumflex
+D5	Otilde
+D6	Odiaeresis
+D7	multiply
+D8	Ooblique
+D8	Oslash
+D9	Ugrave
+DA	Uacute
+DB	Ucircumflex
+DC	Udiaeresis
+DD	Yacute
+DE	THORN
+DE	Thorn
+DF	ssharp
+E0	agrave
+E1	aacute
+E2	acircumflex
+E3	atilde
+E4	adiaeresis
+E5	aring
+E6	ae
+E7	ccedilla
+E8	egrave
+E9	eacute
+EA	ecircumflex
+EB	ediaeresis
+EC	igrave
+ED	iacute
+EE	icircumflex
+EF	idiaeresis
+F0	eth
+F1	ntilde
+F2	ograve
+F3	oacute
+F4	ocircumflex
+F5	otilde
+F6	odiaeresis
+F7	division
+F8	ooblique
+F8	oslash
+F9	ugrave
+FA	uacute
+FB	ucircumflex
+FC	udiaeresis
+FD	yacute
+FE	thorn
+FF	ydiaeresis
+
+# eof
