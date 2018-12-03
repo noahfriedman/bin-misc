@@ -1,8 +1,23 @@
 #!/bin/sh
-# $Id$
+# $Id: ipv6-mac-to-addr,v 1.1 2015/10/05 18:39:38 friedman Exp $
 
 # Compute stateless autoconfig address based on interface MAC
+# or vice-versa
 
-exec ipv6calc -q --mac_to_eui64 "$@"
+case $1 in
+    [0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:* )
+        exec ipv6calc -q -A geneui64 -I mac -O eui64 "$@" ;;
+
+    *::* )
+        addr=fe80::${1#*::}
+        shift
+        exec ipv6calc -q -A ipv6tomac -O mac "$addr" "$@" ;;
+
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f]:* )
+        addr=fe80::$1
+        shift
+        exec ipv6calc -q -A ipv6tomac -O mac "$addr" "$@" ;;
+
+esac
 
 # eof
