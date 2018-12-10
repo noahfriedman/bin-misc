@@ -1,0 +1,7 @@
+#!/bin/sh
+# $Id$
+
+wget -q -O - https://registry.hub.docker.com/v1/repositories/"$1"/tags |
+    jq -r '.[].name'
+
+# eof
