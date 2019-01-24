@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.17 2017/05/11 19:56:29 friedman Exp $
+# $Id: yemacs,v 1.18 2017/05/15 19:40:18 friedman Exp $
 
 client()
 {
@@ -31,6 +31,10 @@ locate_build()
         emacs ) progname="$progname (${ydir##*/})" ;;
     esac
     test -e "$ydir/src/$progname" || ln -s emacs "$ydir/src/$progname"
+    if [ -f "$ydir/src/emacs.pdmp" ]; then
+        # portable dump image
+        test -e "$ydir/etc/$progname.pdmp" || ln -s ../src/emacs.pdmp "$ydir/etc/$progname.pdmp"
+    fi
     return 0 # success
 }
 
