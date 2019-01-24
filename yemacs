@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.18 2017/05/15 19:40:18 friedman Exp $
+# $Id: yemacs,v 1.19 2019/01/24 04:45:59 friedman Exp $
 
 client()
 {
@@ -12,12 +12,12 @@ client()
 locate_build()
 {
     ydir=
-    for dir in $builddirs; do
+    for dir in ${builddirs[@]}; do
         test -d $dir || continue
-        for subdir in `cd $dir && ls -1r`; do
+        for subdir in $( cd $dir && ls -1r ); do
             if [ -d $dir/$subdir -a -f $dir/$subdir/src/emacs ]; then
                 # Use /bin/pwd to follow symlinks
-                ydir=`cd $dir/$subdir && /bin/pwd`
+                ydir=$( cd $dir/$subdir && /bin/pwd )
                 break 2
             fi
         done
@@ -30,11 +30,19 @@ locate_build()
     case $progname in
         emacs ) progname="$progname (${ydir##*/})" ;;
     esac
-    test -e "$ydir/src/$progname" || ln -s emacs "$ydir/src/$progname"
-    if [ -f "$ydir/src/emacs.pdmp" ]; then
-        # portable dump image
-        test -e "$ydir/etc/$progname.pdmp" || ln -s ../src/emacs.pdmp "$ydir/etc/$progname.pdmp"
-    fi
+
+    test -e "$ydir/src/$progname"  || ln -s emacs "$ydir/src/$progname"
+    test -f "$ydir/src/emacs.pdmp" || return
+
+    path_exec=$( sed -n \
+                     -e '/^#define PATH_EXEC/!d' \
+                     -e 's/.*"\(.*\)".*/\1/p' \
+                     -e q \
+                     $ydir/src/epaths.h )
+    mkdir -p $path_exec
+    test -e $path_exec/emacs.pdmp ||
+        ln -s --relative $ydir/src/emacs.pdmp $path_exec/emacs.pdmp
+
     return 0 # success
 }
 
@@ -42,10 +50,8 @@ main()
 {
     ulimit -c unlimited  # I want core dumps from emacs
 
-    builddirs="
-        $HOME/src/emacs/build
-        /export/src/emacs/build
-    "
+    builddirs=( $HOME/src/emacs/build
+                /export/src/emacs/build )
 
     case $1 in
         -login ) progname=-emacs ; shift ;;
@@ -57,7 +63,7 @@ main()
     case $1 in
         -attach )
             case $DISPLAY in
-                '' ) client "(make-frame-on-tty \"`tty`\" \"$TERM\")" ;;
+                '' ) client "(make-frame-on-tty \"$(tty)\" \"$TERM\")" ;;
                 *  ) client "(make-frame-on-display \"$DISPLAY\")"    ;;
             esac > /dev/null ;;
 
