@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.19 2019/01/24 04:45:59 friedman Exp $
+# $Id: yemacs,v 1.20 2019/01/24 06:34:47 friedman Exp $
 
 client()
 {
@@ -32,7 +32,7 @@ locate_build()
     esac
 
     test -e "$ydir/src/$progname"  || ln -s emacs "$ydir/src/$progname"
-    test -f "$ydir/src/emacs.pdmp" || return
+    test -f "$ydir/src/emacs.pdmp" || return 0
 
     path_exec=$( sed -n \
                      -e '/^#define PATH_EXEC/!d' \
