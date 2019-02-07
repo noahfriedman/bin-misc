@@ -1,0 +1,14 @@
+#!/bin/sh
+# $Id$
+
+case $# in
+    0 ) read temp
+        set : $temp
+        shift ;;
+esac
+
+for temp in "$@"; do
+    units -1t ${temp}degC degF
+done
+
+# eof
