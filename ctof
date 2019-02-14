@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: ctof,v 1.1 2019/02/07 23:12:23 friedman Exp $
 
 case $# in
     0 ) read temp
@@ -8,7 +8,7 @@ case $# in
 esac
 
 for temp in "$@"; do
-    units -1t ${temp}degC degF
+    units -1t "tempC($temp)" tempF
 done
 
 # eof
