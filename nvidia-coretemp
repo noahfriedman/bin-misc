@@ -1,0 +1,15 @@
+#!/bin/sh
+# $Id$
+
+C=`nvidia-settings -t -q '[gpu]/GPUCoreTemp'`
+case $1 in
+    -[cC] | [cC] ) echo $C ; exit ;;
+esac
+
+if type dc > /dev/null 2>&1; then
+    echo $C 1.8 '*' 32 + p | dc
+else
+    echo $(( $C * 18 / 10 + 32 ))
+fi
+
+# eof

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec nvidia-settings -t -q '[gpu]/CudaCores'
