@@ -1,0 +1,14 @@
+#!/bin/sh
+# $Id$
+
+name=$1
+dev=${2-`lsscsi -g | sed -ne '/.* \/dev\/sr0  *\([^ ]*\) *$/s//\1/p'`}
+
+exec cdrdao read-cd \
+     --device   "$dev"          \
+     --driver   generic-mmc-raw \
+     --read-raw                 \
+     --datafile "$name.bin"     \
+     "$name.toc"
+
+# eof
