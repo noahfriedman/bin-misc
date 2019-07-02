@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: fix-directory-timestamps,v 1.8 2007/04/09 01:55:50 friedman Exp $
+# $Id: fix-directory-timestamps,v 1.9 2016/12/04 04:10:27 friedman Exp $
 
 ignore='CVS RCS {arch} .svn _MTN .git .hg'
 ignore_meta='MD5SUM SHA1SUM SHA256SUM TRANS.TBL fonts.dir fonts.scale'
@@ -12,13 +12,16 @@ while :; do
   esac
 done
 
-find_ign=`for i in $ignore; do echo ! -name $i ; done`
-sed_ign=` for i in $ignore; do echo "/^$i\$/d" ; done`
+find_ign=`for i in $ignore; do echo ! -name $i  ; done`
+sed_ign=` for i in $ignore; do echo "/^$i\$/d;" ; done`
 
 find ${1+"$@"} $find_ign -type d -print \
   | sort -r \
   | while read d; do
-     nfile=`ls -1At "$d" | sed -e "$sed_ign" -e q`
+     nfile=`ls -1AtF "$d" | sed -e '/[@\/]$/d' \
+                                -e 's/[*@=\/|>]$//' \
+                                -e "$sed_ign" \
+                                -e q`
      case $nfile in
        '' ) : ;;
        * ) touch -r "$d/$nfile" "$d" ;;
