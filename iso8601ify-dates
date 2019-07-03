@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+# $Id$
+
+# Filter to convert text of the form "MMM [d]d yyyy" to "yyyy-mm-dd".
+# No, this isn't locale-aware in any way.
+
+$i = 1;
+%m = map { $_ => $i++ } (qw(jan feb mar apr may jun jul aug sep oct nov dec));
+$p = join('|', keys %m);
+
+while (<>)
+  {
+    s=\b($p)\s+(\d{1,2})\s+(\d{4})\b=sprintf("%04d-%02d-%02d",$3,$m{lc $1},$2)=egio;
+    print;
+  }
+
+# eof
