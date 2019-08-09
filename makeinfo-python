@@ -1,0 +1,44 @@
+#!/bin/sh
+# $Id$
+
+# Requires python3-sphinx
+
+case $# in
+    0 ) { echo "Usage: ${0##*/} [version]"
+          echo
+          echo "e.g. \"${0##*/} 3.7.4\""
+          echo
+        } 1>&2
+        exit 1 ;;
+esac
+
+ver=$1
+tgz=v${ver}.tar.gz
+url=https://github.com/python/cpython/archive/$tgz
+dest=$HOME/lib/info/python/$ver
+
+######
+##
+######
+
+tmpdir=/var/tmp/python-doc$$
+trap 'rm -rf $tmpdir' 0 1 2 3 15
+
+set -e -x
+
+mkdir -p $tmpdir
+
+cd $tmpdir
+wget $url
+tar xf $tgz
+
+cd cpython-$ver/Doc
+sphinx-build-3 -b texinfo -d build/doctrees . build/texinfo
+
+cd build/texinfo && mmakeinfo python.texi
+
+mkdir -p $dest
+gzip -9v python.texi python.info
+mv python.texi.gz python.info.gz $dest
+
+# eof
