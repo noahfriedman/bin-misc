@@ -1,0 +1,18 @@
+#!/bin/sh
+# $Id$
+
+cd ${GNUPGHOME-$HOME/.gnupg}
+
+gpg2 --export-ownertrust >otrust.lst
+
+mv pubring.gpg publickeys
+gpg2 --import-options import-local-sigs --import publickeys
+
+gpg2 --import-ownertrust otrust.lst
+
+rm -f otrust.lst
+mkdir =OLD
+mv publickeys  =OLD/pubring.gpg
+mv secring.gpg =OLD/
+
+# eof
