@@ -1,8 +1,8 @@
 #!/bin/sh
-# $Id: fix-directory-timestamps,v 1.9 2016/12/04 04:10:27 friedman Exp $
+# $Id: fix-directory-timestamps,v 1.10 2019/07/02 22:11:52 friedman Exp $
 
 ignore='CVS RCS {arch} .svn _MTN .git .hg'
-ignore_meta='MD5SUM SHA1SUM SHA256SUM TRANS.TBL fonts.dir fonts.scale'
+ignore_meta='MD5SUM SHA1SUM SHA256SUM TRANS.TBL fonts.dir fonts.scale FETCH_HEAD'
 
 while :; do
   case $1 in
