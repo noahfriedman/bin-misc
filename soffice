@@ -1,0 +1,16 @@
+#!/bin/sh
+
+exec=false
+for arg in "$@"; do
+    case $arg in
+        -? | --* ) exec=true ; break ;;
+    esac
+done
+
+if $exec; then
+    exec libreoffice --nologo "$@"
+else
+    libreoffice --nologo "$@" &
+fi
+
+# eof
