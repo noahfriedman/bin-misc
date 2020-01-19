@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# $Id: mp3riplabel,v 1.21 2016/04/19 03:10:16 friedman Exp $
 
 # Requires python-eyed3 0.7.5 or later fedora rpm for mp3 files
 # Requires metaflac for flac files
