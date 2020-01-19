@@ -174,6 +174,7 @@ label_flac()
     for tag in "3||||$front_cover_image" \
                "4||||$back_cover_image"  \
                "5||||$leaflet_image"     \
+               "6||||$media_image" \
                "0||||$other_image"
     do
         case $tag in
@@ -273,6 +274,7 @@ file_template()
         $1.*.$ext \
         "$1 "*.$ext \
         *" - $1 - "*.$ext \
+        *" - "*:$1" "*.$ext \
         *.$1.*.$ext \
         *-$1-*.$ext \
         *_$1_*.$ext \
@@ -307,10 +309,13 @@ rename_generic()
     track=$1
     title=$2
 
-    albumstr=$album`discstr`
+    albumstr=$album #`discstr`
 
     old=`file_template "$track"`
-    new=`file_filter "$author - $albumstr - $track - $title.$ext"`
+    case $disc_total in
+        '' | 1 | 01 ) new=`file_filter "$author - $albumstr - $track - $title.$ext"`       ;;
+        * )           new=`file_filter "$author - $albumstr - $disc:$track - $title.$ext"` ;;
+    esac
 
     # Quoting matters here, if $old contains wildcard chars!
     case $new in
@@ -349,6 +354,7 @@ config()
     front_cover_image=
      back_cover_image=
         leaflet_image=
+          media_image=
           other_image=
 
     # These are useful if you want to get rid of the track total or disc
