@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # dvd2mp4 --- rip dvds
 # Author: Noah Friedman <friedman@splode.com>
 # Created: 2013-10-18
@@ -8,20 +8,19 @@
 
 handbrake()
 {
-    HandBrakeCLI \
-        --preset     "$preset" \
-        \
-        --two-pass \
-        --turbo \
-        \
-        --format     "$format" \
-        --optimize \
-        --markers \
-        \
-        --use-opencl \
-        --use-hwd \
-        \
-        "$@"
+    declare -a opts=(
+        --preset     "$preset"
+
+        --two-pass
+        --turbo
+
+        --format     "av_$format"
+        --optimize
+        --markers
+        --inline-parameter-sets
+    )
+
+    HandBrakeCLI "${opts[@]}" "$@"
 }
 
 num_chapters()
@@ -50,20 +49,28 @@ single()
 preset()
 {
     case $1 in
-        universal      ) preset='Universal'            ;; #  720
-        normal         ) preset='Normal'               ;;
-        high-profile   ) preset='High Profile'         ;;
+        vfast-720p    ) preset='Very Fast 720p30'           ;;
+        vfast-1080p   ) preset='Very Fast 1080p30'          ;;
 
-        720p           ) preset='AppleTV 2'            ;;
-        1080p          ) preset='AppleTV 3'            ;;
+        fast-720p     ) preset='Fast 720p30'                ;;
+        fast-1080p    ) preset='Fast 1080p30'               ;;
 
-        *              ) preset=$1                     ;;
+        hq-720p       ) preset='HQ 720p30 Surround'         ;;
+        hq-1080p      ) preset='HQ 1080p30 Surround'        ;;
+
+        vhq-720p      ) preset='Super HQ 720p30 Surround'   ;;
+        vhq-1080p     ) preset='Super HQ 1080p30 Surround'  ;;
+
+        android-720p  ) preset='Android 720p30'             ;;
+        android-1080p ) preset='Android 1080p30'            ;;
+
+        *             ) preset=$1                           ;;
     esac
 }
 
 main()
 {
-    preset='AppleTV 3'
+    preset='CLI Default'
     format=mp4
     split=single
 
