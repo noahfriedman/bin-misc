@@ -3,13 +3,16 @@
 # Requires python-eyed3 0.7.5 or later fedora rpm for mp3 files
 # Requires metaflac for flac files
 
+apush()    { eval "$1=(\"\${$1[@]}\" \"\${@:2}\")"; }
+aunshift() { eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"; }
+
 ######
 ## mp3
 ######
 
 eyed3()
 {
-    set eyeD3 ${1+"$@"}
+    set eyeD3 "$@"
     case $VERBOSE in
         '' ) "$@" ;;
         *  ) (set -x; "$@") ;;
@@ -33,6 +36,21 @@ label_mp3()
     title=$2
     shift; shift
 
+    declare -a args=(
+        --encoding       utf16
+        --remove-v1
+        --to-v2.3
+        --artist         "$author"
+        --album          "$album"
+        --disc-num       "$disc"
+        --disc-total     "$disc_total"
+        --track          "$track"
+        --track-total    "$track_total"
+        --title          "$title"
+    )
+    case $year  in ?* ) apush args --recording-date "$year"  ;; esac
+    case $genre in ?* ) apush args --genre          "$genre" ;; esac
+
     comment=$defcomment
     comment_empty=
     case ${1+isset}:$1 in
@@ -46,9 +64,7 @@ label_mp3()
             shift ;;
     esac
     case $comment_empty:$comment in
-        t: | :?* )
-            set fnord --comment="$comment" ${1+"$@"}
-            shift ;;
+        t: | :?* ) aunshift args --comment="$comment" ;;
     esac
 
     file=`file_template "$track"`
@@ -57,49 +73,31 @@ label_mp3()
     echo ----------------------------------------
     echo "$file"
     {
-        case $reset_tags in
-            '' ) : ;;
-            *  ) (
-                    set fnord
-                    for tag in $reset_tags ; do
-                        case $tag in
-                            TXXX:* ) set "$@" --user-text-frame ${tag#TXXX:}: ;;
-                            APIC   ) set "$@" --remove-images ;;
-                            *      ) set "$@" --text-frame $tag: ;;
-                        esac
-                    done
-                    shift
-                    eyed3 "$@" "$file"
-                ) ;;
-        esac
+        if [[ ${#reset_tags[@]} -gt 0 ]]; then
+            declare -a reset_args=()
+            for tag in "${reset_tags[@]}" ; do
+                case $tag in
+                    TXXX:* ) apush reset_args --user-text-frame "${tag#TXXX:}": ;;
+                    APIC   ) apush reset_args --remove-images ;;
+                    *      ) apush reset_args --text-frame "$tag:" ;;
+                esac
+            done
+            eyed3 "${reset_args[@]}" "$file"
+        fi
 
-        set fnord "$@"
-        for tag in "$front_cover_image:FRONT_COVER:" \
-                    "$back_cover_image:BACK_COVER:"  \
-                       "$leaflet_image:LEAFLET:"     \
-                         "$other_image:OTHER:"
-        do
-            case $tag in
+        declare -a tags=(
+            "$front_cover_image:FRONT_COVER:"
+            "$back_cover_image:BACK_COVER:"
+            "$leaflet_image:LEAFLET:"
+            "$other_image:OTHER:" )
+        for field in "${tags[@]}"; do
+            case $field in
                 :*: ) : ;;
-                *   ) set "$@" --add-image="$tag" ;;
+                *   ) apush args --add-image="$field" ;;
             esac
         done
-        shift
 
-        eyed3 \
-            --encoding       utf16           \
-            --to-v2.3                        \
-            --artist         "$author"       \
-            --album          "$album"        \
-            --disc-num       "$disc"         \
-            --disc-total     "$disc_total"   \
-            --track          "$track"        \
-            --track-total    "$track_total"  \
-            --title          "$title"        \
-            --recording-date "$year"         \
-            --genre          "$genre"        \
-            ${1+"$@"} \
-            "$file"
+        eyed3 "${args[@]}" "$@" "$file"
     } > /dev/null
 
     touch -r .stamp "$file"
@@ -127,13 +125,67 @@ rename_mp3()
 ## flac
 ######
 
+declare -a args=()
+declare -A add_tag_flag=(
+    [flac]=--set-tag
+     [ogg]=--tag
+)
+
+# This is used by both flac and ogg
+init_vorbis_args()
+{
+    declare set_tag=${add_tag_flag[${1-flac}]}
+
+    args=()
+    declare -a tags=(      "ARTIST=$author"
+                            "ALBUM=$album"
+                            "TITLE=$title"
+                             "DATE=$year"
+                            "GENRE=$genre"
+
+                         "ARRANGER=$arranger"
+                        "CONDUCTOR=$conductor"
+                         "ENSEMBLE=$ensemble"
+                         "LOCATION=$location"
+
+                      "TRACKNUMBER=$track"
+                       "TRACKTOTAL=$track_total"
+                       "DISCNUMBER=$disc"
+                        "DISCTOTAL=$disc_total"
+
+                            "LABEL=$record_label"
+                          "LABELNO=$record_label_id"
+
+                      "${extra_tags[@]}" )
+    for tag in "${reset_tags[@]}" ; do
+        apush args --remove-tag "$tag"
+    done
+
+    declare -A seen=()
+    for elt in "${tags[@]}"; do
+        tag=${elt%%=*}
+        data=${elt#*=}
+
+        case ${seen[$tag]+isset} in
+            '' ) seen[$tag]=t
+                 apush args --remove-tag "$tag" ;;
+        esac
+        case ${data:+nonempty} in
+            nonempty ) apush args $set_tag "$elt" ;;
+        esac
+    done
+}
+
 info_flac()
 {
     track=$1
     file=`file_template "$track"`
 
     echo "$file:"
-    metaflac --export-tags-to - "$file"
+    #metaflac --export-tags-to - "$file"
+    # This is less ambiguous when there are newlines embedded in tags data.
+    metaflac --list --block-type=VORBIS_COMMENT "$file" |
+        sed -e '1,/comments:/d' -e 's/\[\([0-9]\)]/[ \1]/'
     echo
 }
 
@@ -145,48 +197,21 @@ label_flac()
 
     file=`file_template "$track"`
 
-    set fnord "$@"
+    init_vorbis_args flac
 
-    for tag in $reset_tags ; do
-        set "$@" --remove-tag=$tag
-    done
-
-    for comment in   "ARTIST=$author"       \
-                      "ALBUM=$album"        \
-                      "TITLE=$title"        \
-                       "DATE=$year"         \
-                      "GENRE=$genre"        \
-                "TRACKNUMBER=$track"        \
-                 "TRACKTOTAL=$track_total"  \
-                 "DISCNUMBER=$disc"         \
-                  "DISCTOTAL=$disc_total"
-    do
-         tag=${comment%%=*}
-        data=${comment#*=}
-
-        case $data in
-            "" ) : ;;
-            *  ) set "$@" --remove-tag "$tag" --set-tag "$comment" ;;
+    declare -a tags=( "3||||$front_cover_image"
+                      "4||||$back_cover_image"
+                      "5||||$leaflet_image"
+                      "6||||$media_image"
+                      "0||||$other_image" )
+    for field in "${tags[@]}"; do
+        case $field in
+            ?"||||"?* ) apush args --import-picture-from "$field" ;;
         esac
     done
-
-    for tag in "3||||$front_cover_image" \
-               "4||||$back_cover_image"  \
-               "5||||$leaflet_image"     \
-               "6||||$media_image" \
-               "0||||$other_image"
-    do
-        case $tag in
-            ?"||||"?* ) set "$@" --import-picture-from "$tag" ;;
-        esac
-    done
-
-    shift
 
     echo "Tagging: $file"
-    metaflac \
-        --preserve-modtime \
-        "$@" "$file"
+    metaflac --preserve-modtime --dont-use-padding "$@" "${args[@]}" "$file"
 }
 
 rename_flac()
@@ -216,39 +241,10 @@ label_ogg()
 
     file=`file_template "$track"`
 
-    set fnord "$@"
-
-    for tag in $reset_tags ; do
-        set "$@" --remove-tag=$tag
-    done
-
-    for comment in   "ARTIST=$author"       \
-                      "ALBUM=$album"        \
-                      "TITLE=$title"        \
-                       "DATE=$year"         \
-                      "GENRE=$genre"        \
-                "TRACKNUMBER=$track"        \
-                 "TRACKTOTAL=$track_total"  \
-                 "DISCNUMBER=$disc"         \
-                  "DISCTOTAL=$disc_total"
-    do
-         tag=${comment%%=*}
-        data=${comment#*=}
-
-        case $data in
-            "" ) : ;;
-            *  ) set "$@" --tag "$comment" ;;
-        esac
-    done
-
-    shift
+    init_vorbis_args ogg
 
     echo "Tagging: $file"
-    vorbiscomment \
-        --write \
-        --raw \
-        "$@" \
-        "$file"
+    vorbiscomment --write --raw "$@" "${args[@]}" "$file"
 }
 
 rename_ogg()
@@ -277,7 +273,8 @@ file_template()
         *.$1.*.$ext \
         *-$1-*.$ext \
         *_$1_*.$ext \
-        *" $1 "*.$ext
+        *" $1 "*.$ext \
+        *" $1".$ext
     do
         if [ -f "$f" ]; then
             echo "$f"
@@ -337,18 +334,28 @@ rename() { rename_generic "$@"; }
 
 config()
 {
-                      ##############################
-               author=''
-                album=''
+                      ############################## ID3v1 length
+               author=""
+                album=""
 
-                 year=2000-01-01
+                 year=
                 genre=
-           defcomment=
+           defcomment=  # mp3 only
 
           track_total=01
 
                  disc=01
            disc_total=01
+
+    # vorbis-only  (including flac)
+             arranger=
+            conductor=
+             ensemble=
+             location=
+         record_label=
+      record_label_id=
+           extra_tags=()  # "TAGNAME=text ..." TAGNAME can be repeated
+    # /vorbis-only
 
     front_cover_image=
      back_cover_image=
@@ -359,13 +366,15 @@ config()
     # These are useful if you want to get rid of the track total or disc
     # total, which will not be removed if it already exists, even if the
     # explicit replacement is empty.
-           reset_tags='' #'TPOS TRCK'
+           reset_tags=() # (TPOS TRCK)
 
                   ext=mp3
 }
 
 doit()
 { :
+  #for n in `seq -w 01 $track_total`; do $1 $n "Part $n"; done
+
            ##############################
    #$1 01 "Example Title"
 }
