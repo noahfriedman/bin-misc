@@ -2,23 +2,39 @@
 # $Id: fix-directory-timestamps,v 1.10 2019/07/02 22:11:52 friedman Exp $
 
 ignore='CVS RCS {arch} .svn _MTN .git .hg'
-ignore_meta='MD5SUM SHA1SUM SHA256SUM TRANS.TBL fonts.dir fonts.scale FETCH_HEAD'
+ignore_meta='
+     MD5SUM
+     SHA1SUM
+     SHA256SUM
+     TRANS.TBL
+     fonts.dir
+     fonts.scale
+     FETCH_HEAD
+     URL
+     .md5sum
+'
 
 while :; do
   case $1 in
     -i ) ignore="$ignore $2"   ; shift ; shift ;;
     -m ) ignore="$ignore $ignore_meta" ; shift ;;
+    -d ) dirsp=t                       ; shift ;;
     *  ) break ;;
   esac
 done
 
+case $dirsp in
+    t ) filt='/[@]$/d'   ;;
+    * ) filt='/[@\/]$/d' ;;
+esac
+
 find_ign=`for i in $ignore; do echo ! -name $i  ; done`
 sed_ign=` for i in $ignore; do echo "/^$i\$/d;" ; done`
 
-find ${1+"$@"} $find_ign -type d -print \
+find "$@" $find_ign -type d -print \
   | sort -r \
   | while read d; do
-     nfile=`ls -1AtF "$d" | sed -e '/[@\/]$/d' \
+     nfile=`ls -1AtF "$d" | sed -e "$filt" \
                                 -e 's/[*@=\/|>]$//' \
                                 -e "$sed_ign" \
                                 -e q`
