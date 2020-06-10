@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+# Enumerate the group list of the current account or named users.
+
+my $n = 0;
+
+map {
+  print "\n" if $n++ > 0;
+  my $i = 1;
+  s/^.*:\s+//;
+  s/\s+/\n/g;
+  s/^/sprintf ("%02d\t", $i++)/gme;
+  print $_, "\n";
+} split (/\n/, `groups @ARGV`);
+
+# eof
