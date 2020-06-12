@@ -1,15 +1,24 @@
 #!/usr/bin/env perl
 # Enumerate the group list of the current account or named users.
 
+my @id = split (/\n/, `id @ARGV`);
 my $n = 0;
+
+sub log10 { log( $_[0] ) / log( 10 ) }
 
 map {
   print "\n" if $n++ > 0;
-  my $i = 1;
-  s/^.*:\s+//;
-  s/\s+/\n/g;
-  s/^/sprintf ("%02d\t", $i++)/gme;
-  print $_, "\n";
-} split (/\n/, `groups @ARGV`);
+  print "$1:\n" if @id > 1 && /uid=\d+\((.*?)\)/;
+
+  s/^.*groups=//;
+  s/\s+\S+=.*//;
+  s/[\s+,]+/\n/g;
+
+  my $w = 1 + int( log10( scalar split( /\n/, $_ )));
+
+  my $i = 0;
+  print $_, "\n" if
+    s/^(\d+)\((.*?)\)/sprintf ("%${w}d\t%6d  %s", $i++, $1, $2)/gme;
+} @id;
 
 # eof
