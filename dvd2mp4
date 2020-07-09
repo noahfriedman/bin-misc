@@ -47,22 +47,22 @@ single()
 preset()
 {
     case $1 in
-        vfast-720p    ) preset='Very Fast 720p30'           ;;
-        vfast-1080p   ) preset='Very Fast 1080p30'          ;;
+        vfast-720p    ) preset='General/Very Fast 720p30'           ;;
+        vfast-1080p   ) preset='General/Very Fast 1080p30'          ;;
 
-        fast-720p     ) preset='Fast 720p30'                ;;
-        fast-1080p    ) preset='Fast 1080p30'               ;;
+        fast-720p     ) preset='General/Fast 720p30'                ;;
+        fast-1080p    ) preset='General/Fast 1080p30'               ;;
 
-        hq-720p       ) preset='HQ 720p30 Surround'         ;;
-        hq-1080p      ) preset='HQ 1080p30 Surround'        ;;
+        hq-720p       ) preset='General/HQ 720p30 Surround'         ;;
+        hq-1080p      ) preset='General/HQ 1080p30 Surround'        ;;
 
-        vhq-720p      ) preset='Super HQ 720p30 Surround'   ;;
-        vhq-1080p     ) preset='Super HQ 1080p30 Surround'  ;;
+        vhq-720p      ) preset='Generai/Super HQ 720p30 Surround'   ;;
+        vhq-1080p     ) preset='General/Super HQ 1080p30 Surround'  ;;
 
-        android-720p  ) preset='Android 720p30'             ;;
-        android-1080p ) preset='Android 1080p30'            ;;
+        android-720p  ) preset='Devices/Android 720p30'             ;;
+        android-1080p ) preset='Devices/Android 1080p30'            ;;
 
-        *             ) preset=$1                           ;;
+        *             ) preset=$1                                   ;;
     esac
 }
 
