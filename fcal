@@ -1,81 +1,63 @@
-#! /bin/sh
+#!/usr/bin/env bash
 # fcal --- front end for gcal
 
 # Author: Noah Friedman <friedman@splode.com>
 # Created: 1997-12-29
 # Public domain
 
-# $Id: fcal,v 1.1 1997/12/29 13:16:00 friedman Exp $
-
-# Commentary:
-# May require gcal 2.40 or greater.
-# Code:
-
 # Don't include $HOME in this path; that is implicit
-GCAL_USR_DATADIR=${GCAL_USR_DATADIR-lib/calendars}
-export GCAL_USR_DATADIR
+export GCAL_USR_DATADIR=${GCAL_USR_DATADIR-lib/calendars}
 
 cals=personal
 personal_cal=${FCAL_PERSONAL-calendar}
 
+days=7
+
 while : ; do
-  case $# in 0) break ;; esac
-  case "$1" in
-    -a | --all | --a* )
-      cals=all
-      shift
-     ;;
-    -g | --global | --g* )
-      cals=global
-      shift
-     ;;
-    -p | --personal | --private | --p* )
-      cals=personal
-      shift
-     ;;
-    -- )
-      shift
-      break
-     ;;
-    * )
-      break
-     ;;
-  esac
+    case $# in 0) break ;; esac
+    case $1 in
+        -a | --all                  | --a* ) cals=all;      shift   ;;
+        -g | --global               | --g* ) cals=global;   shift   ;;
+        -p | --personal | --private | --p* ) cals=personal; shift   ;;
+        -d | --days                 | --d* ) days=$2;       shift 2 ;;
+        -- ) shift; break ;;
+        *  ) break ;;
+    esac
 done
 
-set fnord \
-  --alternative-format \
-  --date-format='%Y_%U_%1%D%2_(%K)' \
-  --grouping-text='~' \
-  --include-week-number \
-  --highlighting=no \
-  --suppress-calendar \
-  \
-  --list-mode \
-  --include-today \
-  \
-  --exclude-fixed-dates-list-title \
-  --include-consecutive-number \
-  --leap-day=february \
-  --list-of-fixed-dates=short \
-  --omit-multiple-date-part \
-  \
-  ${1+"$@"}
-shift
+common=(
+    --alternative-format
+    #--date-format='%Y_%U_%1%D%2_(%K)'
+    #--date-format='%Y_%>03#U_%1%>02*D%2_(%<3#K)'
+    --date-format='%>04*Y-%>02*M-%1%>02*D%2_(%<3#K)'
+    --grouping-text='~'
+    --include-week-number
+    --highlighting=no
+    --suppress-calendar
 
-case "$cals" in
-  all | personal )
-    gcal \
-      --period-of-fixed-dates=3+ \
-      --resource-file=$personal_cal \
-      ${1+"$@"}
-   ;;
+    --list-mode
+    --include-today
+
+    --exclude-fixed-dates-list-title
+    --include-consecutive-number
+    --leap-day=february
+    --list-of-fixed-dates=short
+    --omit-multiple-date-part
+)
+
+personal=(
+    --resource-file=$personal_cal
+    --period-of-fixed-dates=${days}+
+)
+
+global=()
+
+case $cals in
+  all | personal ) gcal "${common[@]}" "${personal[@]}" "$@" ;;
 esac
 
-case "$cals" in
-  all | global )
-    gcal ${1+"$@"}
-   ;;
+case $cals in
+  all | global   ) gcal "${common[@]}" "${global[@]}"   "$@" ;;
 esac
 
 # fcal ends here
