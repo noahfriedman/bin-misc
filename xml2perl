@@ -1,0 +1,30 @@
+#!/usr/bin/env perl
+# xml2perl --- convert xml input into perl data structure and print it
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2020-08-26
+# Public domain.
+
+use strict;
+use warnings qw(all);
+
+use XML::XPath;
+
+use FindBin;
+use lib "$FindBin::Bin/../lib/perl";
+use lib "$ENV{HOME}/lib/perl";
+
+use NF::XML2Perl;
+use NF::PrintObject;
+
+sub main
+{
+  local $/ = undef;
+  local $_ = <>;
+
+  my $xml = XML::XPath->new( xml => $_ );
+  print object_pp( xml2perl( $xml )), "\n";
+}
+
+main();
+
+# eof
