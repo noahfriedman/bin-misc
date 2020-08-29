@@ -261,21 +261,38 @@ file_template()
     file_author=`file_filter "$author"`
      file_album=`file_filter "$album"`
 
-    for f in \
-        $file_author.$file_album?$1.*.$ext \
-        track$1.*.$ext \
-        track_$1.$ext \
-        $1-*.$ext \
-        $1.*.$ext \
-        "$1 "*.$ext \
-        *" - $1 - "*.$ext \
-        *" - "*:$1" "*.$ext \
-        *.$1.*.$ext \
-        *-$1-*.$ext \
-        *_$1_*.$ext \
-        *" $1 "*.$ext \
-        *" $1".$ext
-    do
+     declare -a pats=(
+         $file_author.$file_album?$disc:$1.*.$ext
+         track$disc:$1.*.$ext
+         track_$disc:$1.$ext
+         $disc:$1-*.$ext
+         $disc:$1.*.$ext
+         "$disc:$1 "*.$ext
+         *" - $disc:$1 - "*.$ext
+         *" - "*:$disc:$1" "*.$ext
+         *.$disc:$1.*.$ext
+         *-$disc:$1-*.$ext
+         *_$disc:$1_*.$ext
+         *" $disc:$1 "*.$ext
+         *" $disc:$1".$ext
+
+
+         $file_author.$file_album?$1.*.$ext
+         track$1.*.$ext
+         track_$1.$ext
+         $1-*.$ext
+         $1.*.$ext
+         "$1 "*.$ext
+         *" - $1 - "*.$ext
+         *" - "*:$1" "*.$ext
+         *.$1.*.$ext
+         *-$1-*.$ext
+         *_$1_*.$ext
+         *" $1 "*.$ext
+         *" $1".$ext
+     )
+
+    for f in "${pats[@]}"; do
         if [ -f "$f" ]; then
             echo "$f"
             return
