@@ -1,0 +1,27 @@
+#!/bin/sh
+
+flac_tags()
+{
+    #metaflac --export-tags-to - "$file"
+
+    # This is less ambiguous when there are newlines embedded in tags data.
+    metaflac --list --block-type=VORBIS_COMMENT "$1" |
+        sed -e '1,/comments:/d' -e 's/\[\([0-9]\)]/[ \1]/'
+}
+
+main()
+{
+    case $# in
+        0 ) return 1 ;;
+        1 ) flac_tags "$1" ;;
+        * ) for file in "$@"; do
+                echo "$file:"
+                flac_tags "$file"
+                echo
+            done ;;
+    esac
+}
+
+main "$@"
+
+# eof
