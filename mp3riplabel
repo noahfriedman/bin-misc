@@ -48,8 +48,9 @@ label_mp3()
         --track-total    "$track_total"
         --title          "$title"
     )
-    case $year  in ?* ) apush args --recording-date "$year"  ;; esac
-    case $genre in ?* ) apush args --genre          "$genre" ;; esac
+    case $year      in ?* ) apush args --recording-date "$year" ;; esac
+    case $genre     in ?* ) apush args --genre         "$genre" ;; esac
+    case $publisher in ?* ) apush args --publisher "$publisher" ;; esac
 
     comment=$defcomment
     comment_empty=
@@ -357,6 +358,7 @@ config()
 
                  year=
                 genre=
+            publisher=
            defcomment=  # mp3 only
 
           track_total=01
