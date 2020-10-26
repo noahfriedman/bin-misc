@@ -8,6 +8,51 @@ aunshift() { eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"; }
 
 ######
 ## mp3
+##
+## https://id3.org/id3v2.3.0
+##
+## TALB    Album/Movie/Show title
+## TBPM    BPM (beats per minute)
+## TCOM    Composer
+## TCON    Content type
+## TCOP    Copyright message
+## TDAT    Date
+## TDLY    Playlist delay
+## TENC    Encoded by
+## TEXT    Lyricist/Text writer
+## TFLT    File type
+## TIME    Time
+## TIT1    Content group description
+## TIT2    Title/songname/content description
+## TIT3    Subtitle/Description refinement
+## TKEY    Initial key
+## TLAN    Language(s)
+## TLEN    Length
+## TMED    Media type
+## TOAL    Original album/movie/show title
+## TOFN    Original filename
+## TOLY    Original lyricist(s)/text writer(s)
+## TOPE    Original artist(s)/performer(s)
+## TORY    Original release year
+## TOWN    File owner/licensee
+## TPE1    Lead performer(s)/Soloist(s)
+## TPE2    Band/orchestra/accompaniment
+## TPE3    Conductor/performer refinement
+## TPE4    Interpreted, remixed, or otherwise modified by
+## TPOS    Part of a set
+## TPUB    Publisher
+## TRCK    Track number/Position in set
+## TRDA    Recording dates
+## TRSN    Internet radio station name
+## TRSO    Internet radio station owner
+## TSIZ    Size
+## TSRC    ISRC (international standard recording code)
+## TSSE    Software/Hardware and settings used for encoding
+## TYER    Year
+## TXXX    User defined text information frame
+##
+## APIC    Attached picture
+## COMM    Comments
 ######
 
 eyed3()
@@ -30,73 +75,90 @@ info_mp3()
     eyeD3 -P lameinfo "$file"
 }
 
+init_mp3_args()
+{
+    reset_args=()
+    for tag in "${reset_tags[@]}" ; do
+        case $tag in
+            TXXX:*    ) apush reset_args --remove-frame   "${tag#*:}:" ;;
+            COMMENT:* ) apush reset_args --remove-comment ":${tag#*:}" ;;
+            COMMENTS  ) apush reset_args --remove-all-comments ;;
+            APIC      ) apush reset_args --remove-images ;;
+            *         ) apush reset_args --text-frame "$tag:" ;;
+        esac
+    done
+
+    args=()
+    declare -a tags=( "TPE1:$author"
+                      "TCOM:$album_artist"
+                      "TALB:$album"
+                      "TIT2:$title"
+                      "TYER:$year"
+                      "TRDA:$recording_date"
+                      "TCON:$genre"
+
+                      "TRCK:$track${track_total:+/$track_total}"
+                      "TPOS:$disc${disc_total:+/$disc_total}"
+
+                      "TPE4:$arranger"
+                      "TPE3:$conductor"
+                      "TPE2:$ensemble"
+                      "TPE3:$narrator"
+              "TXXX:LOCATION:$location"
+
+                      "TPUB:$publisher"
+                "TXXX:LABEL:$record_label"
+              "TXXX:LABELNO:$record_label_id"
+                 "TXXX:CDDB:$cddb"
+
+                      "${extra_tags[@]}" )
+    for elt in "${tags[@]}"; do
+        candtag=${elt%%:*}
+        case $candtag in
+            *=* ) tag=${elt%%=*} data=${elt#*=} desc=${data#*=} ;;
+            *   ) tag=${elt%%:*} data=${elt#*:} desc=${data#*:} ;;
+        esac
+
+        case $data in '' ) continue ;; esac
+        case $tag in
+            TXXX )
+                case $desc in '' ) continue ;; esac
+                apush args --user-text-frame "$data" ;;
+            COMMENT ) apush args --add-comment "$data" ;;
+            * ) apush args --text-frame "$tag:$data" ;;
+        esac
+    done
+
+    declare -a tags=(
+        "$front_cover_image:FRONT_COVER:"
+         "$back_cover_image:BACK_COVER:"
+            "$leaflet_image:LEAFLET:"
+              "$media_image:MEDIA:"
+              "$other_image:OTHER:" )
+    for field in "${tags[@]}"; do
+        case $field in :*: ) continue ;; esac
+        apush args --add-image="$field"
+    done
+}
+
 label_mp3()
 {
     track=$1
     title=$2
-    shift; shift
+    shift; shift;
 
-    declare -a args=(
-        --encoding       utf16
-        --remove-v1
-        --to-v2.3
-        --artist         "$author"
-        --album          "$album"
-        --disc-num       "$disc"
-        --disc-total     "$disc_total"
-        --track          "$track"
-        --track-total    "$track_total"
-        --title          "$title"
-    )
-    case $year      in ?* ) apush args --recording-date "$year" ;; esac
-    case $genre     in ?* ) apush args --genre         "$genre" ;; esac
-    case $publisher in ?* ) apush args --publisher "$publisher" ;; esac
-
-    comment=$defcomment
-    comment_empty=
-    case ${1+isset}:$1 in
-        isset:-* | : ) : ;;
-        isset:   )
-            comment=
-            comment_empty=t
-            shift ;;
-        isset:?* )
-            comment=$1
-            shift ;;
-    esac
-    case $comment_empty:$comment in
-        t: | :?* ) aunshift args --comment="$comment" ;;
-    esac
+    init_mp3_args
 
     file=`file_template "$track"`
     touch -r "$file" .stamp
 
     echo ----------------------------------------
     echo "$file"
+
     {
-        if [[ ${#reset_tags[@]} -gt 0 ]]; then
-            declare -a reset_args=()
-            for tag in "${reset_tags[@]}" ; do
-                case $tag in
-                    TXXX:* ) apush reset_args --user-text-frame "${tag#TXXX:}": ;;
-                    APIC   ) apush reset_args --remove-images ;;
-                    *      ) apush reset_args --text-frame "$tag:" ;;
-                esac
-            done
+        if [[ ${#reset_args[@]} -gt 0 ]]; then
             eyed3 "${reset_args[@]}" "$file"
         fi
-
-        declare -a tags=(
-            "$front_cover_image:FRONT_COVER:"
-            "$back_cover_image:BACK_COVER:"
-            "$leaflet_image:LEAFLET:"
-            "$other_image:OTHER:" )
-        for field in "${tags[@]}"; do
-            case $field in
-                :*: ) : ;;
-                *   ) apush args --add-image="$field" ;;
-            esac
-        done
 
         eyed3 "${args[@]}" "$@" "$file"
     } > /dev/null
@@ -139,23 +201,35 @@ init_vorbis_args()
 
     args=()
     declare -a tags=(      "ARTIST=$author"
+                     "ALBUM_ARTIST=$album_artist"
                             "ALBUM=$album"
                             "TITLE=$title"
+                          "VERSION=$version"
                              "DATE=$year"
                             "GENRE=$genre"
-
-                         "ARRANGER=$arranger"
-                        "CONDUCTOR=$conductor"
-                         "ENSEMBLE=$ensemble"
-                         "LOCATION=$location"
 
                       "TRACKNUMBER=$track"
                        "TRACKTOTAL=$track_total"
                        "DISCNUMBER=$disc"
                         "DISCTOTAL=$disc_total"
 
+                         "ARRANGER=$arranger"
+                        "CONDUCTOR=$conductor"
+                         "ENSEMBLE=$ensemble"
+                         "LOCATION=$location"
+                         "NARRATOR=$narrator"
+
+                      "DESCRIPTION=$description"
+                        "COPYRIGHT=$copyright"
+                          "LICENSE=$license"
+                     "ORGANIZATION=$organization"
+                          "CONTACT=$contact"
+
+                        "PUBLISHER=$publisher"
                             "LABEL=$record_label"
                           "LABELNO=$record_label_id"
+                             "CDDB=$cddb"
+                             "ISRC=$isrc"
 
                       "${extra_tags[@]}" )
     for tag in "${reset_tags[@]}" ; do
@@ -355,26 +429,27 @@ config()
                       ############################## ID3v1 length
                author=""
                 album=""
+         album_artist=
 
                  year=
                 genre=
-            publisher=
-           defcomment=  # mp3 only
 
           track_total=01
 
                  disc=01
            disc_total=01
+                 cddb=
 
-    # vorbis-only  (including flac)
              arranger=
+             narrator=
+            publisher=
             conductor=
              ensemble=
              location=
+       recording_date=
          record_label=
       record_label_id=
            extra_tags=()  # "TAGNAME=text ..." TAGNAME can be repeated
-    # /vorbis-only
 
     front_cover_image=
      back_cover_image=
