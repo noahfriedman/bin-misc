@@ -88,7 +88,7 @@ init_mp3_args()
         esac
     done
 
-    args=()
+    args=( "${global_eyed3_args[@]}" )
     declare -a tags=( "TPE1:$author"
                       "TCOM:$album_artist"
                       "TALB:$album"
@@ -199,7 +199,7 @@ init_vorbis_args()
 {
     declare set_tag=${add_tag_flag[${1-flac}]}
 
-    args=()
+    args=( "${global_vorbis_args[@]}" )
     declare -a tags=(      "ARTIST=$author"
                      "ALBUM_ARTIST=$album_artist"
                             "ALBUM=$album"
@@ -463,6 +463,9 @@ config()
            reset_tags=() # (TPOS TRCK)
 
                   ext=mp3
+
+   global_vorbis_args=()
+    global_eyed3_args=() # --to-v2.3 --remove-all
 }
 
 doit()
