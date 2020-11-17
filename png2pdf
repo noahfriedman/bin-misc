@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+progname=${0##*/}
+tmpdir=${TMPDIR:-/tmp}/$progname$$
+
+declare -a trg=()
+pdf=
+
+base() { local arg=${1##*/}; echo "${arg%.*}"; }
+geom() { identify "$1" | { read x x g x; echo ${g%%x*} ${g##*x}; }; }
+
+#cvt1file()
+#{
+#    local src=$1
+#    local dst=$tmpdir/`base $1`${2-.pdf}
+#    declare -a args=()
+#
+#    set -- $(geom "$src")
+#    if false && [[ $2 -gt 1600 ]]; then
+#        args+=( -resize x1600 )
+#    fi
+#
+#    cvt "${args[@]}" "$src" "$dst"
+#    trg+=( "$dst" )
+#}
+#
+#alt_main()
+#{
+#    mkdir "$tmpdir" || exit $?
+#    # safer than rm -rf since there should be no subdirs
+#    trap 'rm -f "$tmpdir"/* && rmdir "$tmpdir"' 0 1 2 3 15
+#
+#    for file in "$@"; do
+#        case $file in
+#            *.pdf ) pdf=$file ;;
+#            *.jpg ) trg+=( "$file" ) ;;
+#            *     ) cvt1file "$file" .pdf ;;
+#        esac
+#    done
+#
+#    case $pdf in
+#        '' ) pdf=`base "$1"`.pdf ;;
+#    esac
+#
+#    #convert -verbose "${trg[@]}" -units PixelsPerInch -density 96 "$pdf"
+#    pdfunite "${trg[@]}" "$pdf"
+#}
+
+cvt()
+{
+    declare -a args=(
+        -colorspace RGB
+        -alpha      deactivate
+
+        -compress   JPEG
+        -quality    92
+
+        #-units     PixelsPerInch
+        #-density   96
+    )
+
+    convert -verbose "${args[@]}" "$@"
+}
+
+main()
+{
+    for arg in "$@"; do
+        case $arg in
+            *.pdf ) pdf=$arg ;;
+            *     ) trg+=( "$arg" ) ;;
+        esac
+    done
+
+    case $pdf in
+        '' ) for arg in "$@"; do
+                 if [ -e "$arg" ]; then
+                     pdf=`base "$arg"`.pdf
+                     break
+                 fi
+             done ;;
+    esac
+
+    cvt "${trg[@]}" "$pdf"
+}
+
+main "$@"
+
+# eof
