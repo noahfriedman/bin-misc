@@ -1,0 +1,27 @@
+#!/bin/sh
+
+links_dump()
+{
+    ${LINKS-elinks} \
+        -dump \
+        -dump-width 80 \
+        -no-connect  1 \
+        -no-home     1 \
+        -no-numbering  \
+        -no-references \
+        "$@"
+}
+
+main()
+{
+    ver=${1-'[0-9]+'}
+    links_dump https://fedoraproject.org/wiki/End_of_life |
+        sed -E \
+            -e "/^  *Fedora( Core)? ($ver) +([0-9\-]+) .*/!d" \
+            -e 's//\2 \3/' \
+            -e '/^. /s/^/ /'
+}
+
+main "$@"
+
+# eof
