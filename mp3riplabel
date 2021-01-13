@@ -93,18 +93,22 @@ init_mp3_args()
                       "TCOM:$album_artist"
                       "TALB:$album"
                       "TIT2:$title"
-                      "TYER:$year"
-                      "TRDA:$recording_date"
-                      "TCON:$genre"
 
                       "TRCK:$track${track_total:+/$track_total}"
                       "TPOS:$disc${disc_total:+/$disc_total}"
 
-                      "TPE4:$arranger"
-                      "TPE3:$conductor"
+                      "TORY:$year"            # v2.3
+                      "TRDA:$recording_date"  # v2.3
+
+                      "TDRL:$year"            # v2.4
+                      "TDRC:$recording_date"  # v2.4
+
+                      "TCON:$genre"
                       "TPE2:$ensemble"
-                      "TPE3:$narrator"
-              "TXXX:LOCATION:$location"
+                      "TPE3:$conductor"
+                      "TPE4:$arranger"
+             "TXXX:NARRATOR:$narrator"
+             "TXXX:LOCATION:$location"
 
                       "TPUB:$publisher"
                 "TXXX:LABEL:$record_label"
@@ -465,7 +469,7 @@ config()
                   ext=mp3
 
    global_vorbis_args=()
-    global_eyed3_args=() # --to-v2.3 --remove-all
+    global_eyed3_args=( --to-v2.3 ) # --remove-all
 }
 
 doit()
