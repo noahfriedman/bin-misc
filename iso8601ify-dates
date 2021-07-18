@@ -3,10 +3,11 @@
 # Filter to convert text of the form "MMM [d]d yyyy" to "yyyy-mm-dd".
 # No, this isn't locale-aware in any way.
 
-sub enum { my $i = 1; return map { $_ => $i++ } @_ }
+sub enum { my $i = 1; return map { $_ => ($i++ % 13) } @_ }
 
 %m = enum (qw(january february march april may june july
               august september october november december
+              ignore
               jan feb mar apr may jun jul aug sep oct nov dec));
 $p = join('|', keys %m);
 
