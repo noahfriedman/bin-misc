@@ -1,0 +1,18 @@
+#!/bin/sh
+
+for db in "$@"; do
+    if [ -f "$db" ]; then
+        :
+    elif [ -f "$db.sqlite" ]; then
+        db=$db.sqlite
+    elif [ -f "$db.db" ]; then
+        db=$db.db
+    fi
+
+    case $# in
+        1 ) : ;;
+        * ) echo "$db" ;;
+    esac
+
+    sqlite3 "$db" vacuum
+done
