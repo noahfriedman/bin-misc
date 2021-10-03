@@ -1,0 +1,22 @@
+#!/bin/sh
+
+exec tidy \
+       --quiet			yes 	\
+       --gnu-emacs		yes 	\
+       --keep-time		no 	\
+       --write-back		no 	\
+       					\
+       --input-html		 	\
+       --output-html			\
+				        \
+       --indent			yes 	\
+       --indent-attributes	yes 	\
+       --indent-spaces		4 	\
+       --sort-attributes	alpha	\
+					\
+       --wrap			160 	\
+       --wrap-attributes	no 	\
+       --wrap-script-literals	no 	\
+       					\
+       --vertical-space		yes 	\
+       ${1+"$@"}
