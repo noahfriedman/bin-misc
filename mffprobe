@@ -1,0 +1,30 @@
+#!/bin/sh
+
+: ${LC_CTYPE:=en_US.UTF-8}
+export LC_CTYPE
+
+args=(
+    -hide_banner
+    -loglevel		error
+    -print_format	json
+
+    -show_format
+    #-show_packets
+    #-show_frames
+    -show_streams
+    -show_programs
+    -show_chapters
+    #-show_data            # show extradata in hex+ascii
+    -show_private_data
+    #-show_entries	'format      : streams     : programs     : chapters'
+    #-show_entries	'format_tags : stream_tags : program_tags : chapter_tags'
+
+    #-count_frames
+    #-count_packets
+
+    #-find_stream_info
+)
+
+exec ffprobe "${args[@]}" "$@"
+
+# eof
