@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+# pip-search -- custom fork of Victor Garric's pip_search package
+
+# Author: Noah Friedman <friedman@splode.com>
+#         Victor Garric <victor.garric@gmail.com>
+# Forked: 2021-11-16
+# License: MIT
+
+# Commentary:
+
+# This fork strips all of the color highlighting, urls, and box graphcs.
+# One line is printed for each module regardless of terminal width.
+# This is easier to view in Emacs buffers or to sort by column without
+#   building sorting into this script itself.
+# Other minor changes include displaying ISO8601 dates.
+
+# To sort by date:    pip-search [query] | sort -bk3,3
+# To sort by version: pip-search [query] | sort -k2,2g
+
+# Upstream code at https://github.com/victorgarric/pip_search/
+# PiPy modules required: beautifulsoup4, requests, rich
+
+# Complain to Noah about anything in this fork.
+# If anything is broken it's my fault.
+
+# Code:
+
+import re
+import sys
+import argparse
+import requests
+
+from bs4          import BeautifulSoup
+from rich.console import Console
+from rich.table   import Table
+
+api_url = 'https://pypi.org/search/'
+
+def search( query ):
+    snippets = []
+    s = requests.Session()
+    for page in range( 1, 3 ):
+        params = { 'q'    : query,
+                   'page' : page }
+        r = s.get( api_url, params=params )
+        soup = BeautifulSoup( r.text, 'html.parser' )
+        snippets += soup.select( 'a[class*="snippet"]' )
+        if not hasattr( s, 'start_url' ):
+            s.start_url = r.url.rsplit( '&page', maxsplit=1 ).pop( 0 )
+
+    rows = []
+    for snippet in snippets:
+        pkg  = snippet.select_one( 'span[class*="name"]'     ).text
+        ver  = snippet.select_one( 'span[class*="version"]'  ).text
+        rel  = snippet.select_one( 'span[class*="released"]' )
+        date = rel.select_one( 'time' ).attrs[ 'datetime' ][ 0:10 ]
+        desc = snippet.select_one( 'p[class*="description"]' ).text
+        rows.append([ re.sub( r'\s+', ' ', col.strip() )
+                     for col in (pkg, ver, date, desc) ])
+    rows.sort( key=lambda row: row[0].lower())
+
+    table = Table( 'PACKAGE', 'VERSION', 'RELEASED', 'DESC',
+                   show_header = False, # Don't show for now
+                   box         = None,
+                   pad_edge    = False )
+    for row in rows:
+        table.add_row( *row )
+
+    console = Console( width=1024, emoji=False )
+    with console.capture() as capture:
+        console.print( table )
+    return re.sub( r'\s+$', '', capture.get(), flags=re.MULTILINE )
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument( 'query', nargs='+', type=str,
+                     help='terms to search pypi.org package repository' )
+    args = ap.parse_args()
+    text = search( query=' '.join( args.query ))
+    print( text )
+
+if __name__ == '__main__':
+    sys.exit( main() )
+
+# eof
