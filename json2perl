@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+# json2perl --- convert json input into perl data structure and print it
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2021-12-01
+# Public domain.
+
+use strict;
+use warnings qw(all);
+
+use FindBin;
+use lib "$FindBin::Bin/../lib/perl";
+use lib "$ENV{HOME}/lib/perl";
+
+use JSON;
+use NF::PrintObject qw(:default :vars);
+
+$object_pp_maxlen = $ENV{PP_MAXLEN} || 0; # disable default string truncation
+
+sub main
+{
+  local $/ = undef;
+  local $_ = <>;
+
+  my $json = JSON->new->relaxed( 1 );
+  my $obj  = $json->decode( $_ );
+  print object_pp( $obj ), "\n";
+}
+
+main();
+
+# eof
