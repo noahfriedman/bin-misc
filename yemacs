@@ -33,17 +33,6 @@ locate_build()
 
     test -e "$ydir/src/$progname"  || ln -s emacs "$ydir/src/$progname"
     test -f "$ydir/src/emacs.pdmp" || return 0
-
-    path_exec=$( sed -n \
-                     -e '/^#define PATH_EXEC/!d' \
-                     -e 's/.*"\(.*\)".*/\1/p' \
-                     -e q \
-                     $ydir/src/epaths.h )
-    mkdir -p $path_exec
-    test -e $path_exec/emacs.pdmp ||
-        ln -s --relative $ydir/src/emacs.pdmp $path_exec/emacs.pdmp
-
-    return 0 # success
 }
 
 main()
