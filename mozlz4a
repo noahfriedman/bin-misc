@@ -31,6 +31,7 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import lz4.block
+import os
 import sys
 
 from argparse import ArgumentParser
@@ -72,6 +73,7 @@ if __name__ == "__main__":
         )
     argparser.add_argument(
             "out_file",
+            nargs='?',
             help="Path to output file."
         )
 
@@ -83,12 +85,15 @@ if __name__ == "__main__":
     except IOError as e:
         print("Could not open input file `%s' for reading: %s" % (parsed_args.in_file, e), file=sys.stderr)
         sys.exit(2)
-    
-    try:
-        out_file = open(parsed_args.out_file, "wb")
-    except IOError as e:
-        print("Could not open output file `%s' for writing: %s" % (parsed_args.out_file, e), file=sys.stderr)
-        sys.exit(3)
+
+    if parsed_args.out_file:
+        try:
+            out_file = open(parsed_args.out_file, "wb")
+        except IOError as e:
+            print("Could not open output file `%s' for writing: %s" % (parsed_args.out_file, e), file=sys.stderr)
+            sys.exit(3)
+    else:
+        out_file = os.fdopen( sys.stdout.fileno(), "wb", closefd=False )
 
     try:
         if parsed_args.decompress:
