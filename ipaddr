@@ -1,0 +1,23 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings qw(all);
+
+use Socket;
+
+sub main
+{
+  for my $arg (@_)
+    {
+      my $res;
+      if ($arg =~ /^[0-9.]+$/)
+        { $res = gethostbyaddr( inet_aton( $arg ), AF_INET ) }
+      else
+        { $res = inet_ntoa( scalar gethostbyname( $arg )) }
+      print $res, "\n";
+    }
+}
+
+main( @ARGV );
+
+# eof
