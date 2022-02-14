@@ -5,16 +5,34 @@ use warnings qw(all);
 
 use Socket;
 
+my %herrstr = (-1 => "Resolver internal error",
+                0 => "Resolver Error 0 (no error)",
+                1 => "Unknown host",
+                2 => "Host name lookup failure",
+                3 => "Unknown server error",
+                4 => "No address associated with name");
+
 sub main
 {
   for my $arg (@_)
     {
+      my $h_errno = 0;
       my $res;
+
       if ($arg =~ /^[0-9.]+$/)
         { $res = gethostbyaddr( inet_aton( $arg ), AF_INET ) }
       else
-        { $res = inet_ntoa( scalar gethostbyname( $arg )) }
-      print $res, "\n";
+        {
+          my $ip = gethostbyname( $arg );
+          $res = inet_ntoa( $ip ) if $ip;
+        }
+      if ($?)
+        {
+          my $msg = $herrstr{$?};
+          print STDERR "$arg: $msg\n";
+          next;
+        }
+      print $res, "\n" if $res;
     }
 }
 
