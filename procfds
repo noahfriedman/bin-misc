@@ -1,0 +1,23 @@
+#!/bin/sh
+
+args=(
+    -w                # suppress warnings
+    -a                # AND selection criteria
+
+    -d ^DEL,^mem,^txt,^cwd,^rtd # only report fds
+    +E                # display pipe/socket/pty endpoing info
+    -o                # Show offset rather than size
+    -o 8              # switch to hex after 8 digits (yes, -o is overloaded)
+
+    -Ts
+
+    +M
+    -l                # don't convert uids to name
+    -n                # don't do dns lookups
+    -l                # don't convert uids to name
+    -P                # don't convert port numbers to name
+)
+
+exec lsof "${args[@]}" "$@"
+
+# eof
