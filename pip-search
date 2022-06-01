@@ -44,15 +44,15 @@ def search( query ):
                    'page' : page }
         r = s.get( api_url, params=params )
         soup = BeautifulSoup( r.text, 'html.parser' )
-        snippets += soup.select( 'a[class*="snippet"]' )
+        snippets += soup.select( 'a[class*="package-snippet"]' )
         if not hasattr( s, 'start_url' ):
             s.start_url = r.url.rsplit( '&page', maxsplit=1 ).pop( 0 )
 
     rows = []
     for snippet in snippets:
-        pkg  = snippet.select_one( 'span[class*="name"]'     ).text
-        ver  = snippet.select_one( 'span[class*="version"]'  ).text
-        rel  = snippet.select_one( 'span[class*="released"]' )
+        pkg  = snippet.select_one( 'span[class*="package-snippet__name"]'     ).text
+        ver  = snippet.select_one( 'span[class*="package-snippet__version"]'  ).text
+        rel  = snippet.select_one( 'span[class*="package-snippet__created"]' )
         date = rel.select_one( 'time' ).attrs[ 'datetime' ][ 0:10 ]
         desc = snippet.select_one( 'p[class*="description"]' ).text
         rows.append([ re.sub( r'\s+', ' ', col.strip() )
