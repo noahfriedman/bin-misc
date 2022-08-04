@@ -57,7 +57,7 @@ main()
             esac > /dev/null ;;
 
         -workspaces )
-            client "(let ((f (make-frame-on-display \"$DISPLAY\")))
+            client "(let ((f (make-frame-on-display \"$DISPLAY\" '((visibility)))))
                       (with-selected-frame f
                         (make-my-workspace-frames))
                       (delete-frame f))" ;;
