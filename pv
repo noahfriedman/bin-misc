@@ -1,0 +1,2 @@
+#!/bin/sh
+exec run-next "$0" -WF "%N %b %r AVG:%a %t %e" "$@"
