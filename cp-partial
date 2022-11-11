@@ -72,7 +72,7 @@ sub cp
 
   #print "beg = $beg\nend = $end\nmaxbuf = $maxbuf\n";
 
-  unless (sysseek ($srcfh, $beg, SEEK_SET))
+  unless ($beg == 0 || sysseek ($srcfh, $beg, SEEK_SET))
     {
       _error ($src, "seek $beg", $!);
       return;
