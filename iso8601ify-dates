@@ -3,18 +3,30 @@
 # Filter to convert text of the form "MMM [d]d yyyy" to "yyyy-mm-dd".
 # No, this isn't locale-aware in any way.
 
+use strict;
+use warnings qw(all);
+
 sub enum { my $i = 1; return map { $_ => ($i++ % 13) } @_ }
 
-%m = enum (qw(january february march april may june july
-              august september october november december
-              ignore
-              jan feb mar apr may jun jul aug sep oct nov dec));
-$p = join('|', keys %m);
+sub main
+{
+  my %m = enum (qw(january february march april may june july
+                   august september october november december
+                   ignore
+                   jan feb mar apr may jun jul aug sep oct nov dec));
+  my $p = join('|', keys %m);
 
-while (<>)
-  {
-    s=\b($p)\s+(\d{1,2}),?\s+(\d{4})\b=sprintf("%04d-%02d-%02d",$3,$m{lc $1},$2)=egio;
-    print;
-  }
+  while (<>)
+    {
+      s=\b($p)\s+(\d{1,2}),?\s+(\d{4})\b=sprintf("%04d-%02d-%02d",$3,$m{lc $1},$2)=egio;
+
+      # Convert HH:MM{:SS} AM|PM to 24hr time.
+      s=\b(\d\d):(\d\d(?::\d\d)?)[ \t]*PM\b=$1+12 . ":$2"=egio;
+      s=\b(\d\d:\d\d(?::\d\d)?)[ \t]*AM\b=$1=gio;
+      print;
+    }
+}
+
+main( @ARGV );
 
 # eof
