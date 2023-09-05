@@ -1,7 +1,20 @@
 #!/bin/sh
-# $Id$
 
-wget -q -O - https://registry.hub.docker.com/v1/repositories/"$1"/tags |
-    jq -r '.[].name'
+namespace=library   # docker public namespace
+repository=UNKNOWN
+page=1
+
+case $#:$1:$2:$3 in
+    1:*        )              repository=$1 ;;
+    2:*:[0-9]* )              repository=$1 page=$2 ;;
+    2:*        ) namespace=$1 repository=$2 ;;
+    3:*        ) namespace=$1 repository=$2 page=$3 ;;
+esac
+
+url="https://hub.docker.com/v2/namespaces/$namespace/repositories/$repository/tags?page_size=100&page=$page"
+
+wget -q -O - "$url"         |
+    jq -r '.results[].name' |
+    sort -rV
 
 # eof
