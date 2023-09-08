@@ -1,10 +1,9 @@
 #!/bin/sh
-# $Id: restore-pdf-mtime,v 1.1 2017/12/04 20:19:28 friedman Exp $
 
 readmtime()
 {
     awk -F' *:  *' \
-        -e '/^ModDate:/ { print $2; exit }' \
+        -e '/^ModDate:/ && $2 != "" { print $2; exit }' \
         -e '/^CreationDate:/ { tm=$2 }' \
         -e 'ENDFILE { print tm }'
 }
