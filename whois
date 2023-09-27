@@ -1,78 +1,93 @@
 #!/usr/bin/env perl
-# $Id: whois,v 1.13 2006/02/05 06:41:37 friedman Exp $
 
-$^W = 1;
 use strict;
+use warnings qw(all);
 
-my $whois = "jwhois";
-system ("{ jwhois --version; } > /dev/null 2>&1");
-if ($? != 0)
-  {
-    $whois = `run-next -p "$0"`;
-    chomp $whois;
-  }
+(my $progname = $0) =~ s=.*/==;
 
-my $buf;
+my @re =
+  (# generic
+   qr|\s*\(?https?://(?:www.)?icann.org/epp#\S+|,
+   qr=^>>> =m,
+   qr= <<<$=m,
+   qr=URL of the ICANN WHOIS Data Problem.*?\n=i,
+   qr=URL of the ICANN Whois Inaccuracy.*?\n=i,
+   qr=(?:NOTICE|TERMS OF USE).*?at any time.\n=s,
+   qr=NOTICE:.*?abide by (?:these terms|this policy).\n=s,
+   qr=NOTICE:.*?for this registration.\n=s,
+   qr="?For more information on Whois status codes.*?\n=i,
+   qr=The Data in the.*?DOMAIN AVAILABILITY.\n=s,  # tucows is longer
+   qr=The Data in.*?abide by (?:these terms|this policy).\n=s, # than this
+   qr=Register \S+ domain name at .*?\n=s,
+
+   # NSI/Verisign (whois.networksolutions.com), internic.net
+   qr=Get a FREE domain.*?http://www.networksolutions.com\n=s,
+   qr=The Registry database contains ONLY .*? domains and[ \n]Registrars.?=,
+
+   # whois.tucows.com / opensrs
+   # Match labels with blank values, unless that label is RSP.
+   # By inserting SKIP dynamically into the regexp for just that label,
+   # it won't match.
+   qr=^(.*?)(?(?{ $1 eq "Registration Service Provider" })SKIP):\n=m,
+
+   qr=The ARIN Registration Services Host.*?NIPRNET Information.\n=s,
+
+   # nic.fr
+   qr=.*www.nic.fr/info/whois/dbcopyright.html\n=s,
+   qr=^%%(?:\s.+|)\n=m,
+
+   # whois.dotster.com
+   qr=The data contained in.*?limitations of warranty.\n=s,
+
+   # whois.educause.net
+   qr=\nThis Registry database contains ONLY..*?-----\n=s,
+
+   # whois.pir.org
+   qr=Terms of Use: Access to Public Interest Registry WHOIS.*?\n=i,
+   qr=^.*?: REDACTED FOR PRIVACY\n=m,
+   qr=^.*?: Please query the RDDS service.*?\n=m,
+
+   # whois.squarespace.domains
+   qr=Please register your domains.*?abide by this policy.\n=si,
+   qr=https://www.icann.org/resources/.*?\n=,
+   qr=^.*?: Contact Privacy Inc. Customer \d+\n=m,
+   # Elide registrar address+phone
+   qr=^(\S+) Street: 96 Mowat Ave\n\1 City: Toronto\n\1 State/Province: ON\n\1 Postal Code: M4K 3K1\n\1 Country: CA\n\1 Phone: \+1.4165385487\n=m,
+
+   #whois.markmonitor.com
+   qr=If you wish to contact.*?----\n=s,
+   qr=^.*?: Select Request Email Form.*?\n=m,
+
+   # whois.corporatedomains.com
+   qr=Corporation Service Company.*?cscglobal.com\n=s,
+
+  );
+
+sub whois
 {
-  local ($/) = undef;
-  open (F, "$whois @ARGV |");
-  $buf = <F>;
-  close (F);
+  my $prog = $ENV{WHOIS} || $progname;
+  my @cmd = ($prog eq $progname
+             ? ('run-next', $0)
+             : $prog);
+
+  open( my $fh, "-|", @cmd, @_ ) or die "exec: @cmd: $!\n";
+  local $/ = undef;
+  return <$fh>;
 }
 
-my @s
-  = (# NSI/Verisign (whois.networksolutions.com)
-     "The Data in Network Solutions.*abide by this policy.\n+",
-     "The Data in the VeriSign Registrar.*abide by this policy.\n+",
-     "NOTICE AND TERMS OF USE: You are not authorized.*terms at any time.\n+",
-     "Get a FREE domain.*http://www.networksolutions.com\n+",
+sub main
+{
+  my $buf = whois( @_ ) or die "$progname: No data\n";
 
-     #opensrs
-     "The Data in the Tucows Registrar WHOIS.*DOMAIN AVAILABILITY.\n+",
+  $buf =~ s/\s*?\n/\n/sg;   # normalize line endings and strip trailing ws
+  map { $buf =~ s/$_//g } @re;
+  $buf =~ s/(-\d\d)T(\d\d:)/$1 $2/g;  # make iso8601 more readable
+  $buf =~ s/\n{3,}/\n\n/g;  # allow up to 1 blank line
+  $buf =~ s/\s+$/\n/;       # remove trailing ws and extra newlines at end.
 
-     "The ARIN Registration Services Host.*NIPRNET Information.\n+",
+  print $buf;
+}
 
-     ".*www.nic.fr/info/whois/dbcopyright.html\n+",
-
-     # whois.dotster.com preamble
-     "The data contained in Dotster.*limitations of warranty.\n+",
-     # whois.dotster.com postamble
-     "Register a domain name at www.dotster.com\n+",
-
-     # whois.register.com preamble
-     "The data in Register.com.s WHOIS.*abide by these terms.\n+",
-     # whois.register.com postamble
-     "Register your domain name at http://www.register.com\n+",
-
-     # Compuserve preamble
-     "Access to CompuServe.s WHOIS.*you agree to these terms.\n+",
-     # Compuserv postamble
-     "WHOIS data is only provided.*http://domain.compuserve.com\n+",
-
-     # whois.gandi.net preamble
-     "% GANDI Registrar whois database for.*%[^\n]*\n+",
-
-     # whois.enom.net
-     "NOTICE: The expiration date.*expiration for this registration.\n+",
-     "TERMS OF USE:.*modify these terms at any time.\n+",
-     "The data in this whois.*abide by these terms.\nVersion[^\n]+\n+",
-
-     # whois.publicinterestregistry.net
-     "NOTICE: Access to .ORG WHOIS information.*abide by this policy.\n+",
-
-     # whois.nic.cc
-     "Whois Server Version.*-grs.com/whois/ for detailed information.\n+",
-     "NOTICE: The expiration date.*domains[\n ]and Registrars.\n+",
-
-     # whois.educause.net
-     "\nThis Registry database contains ONLY .EDU domains..*-----\n+",
-
-     # whois.namingweb.com
-     "The data in this whois.*by these terms.\n+",
-    );
-
-$buf =~ s/[ \t]*\r?\n/\n/g;
-map { $buf =~ s/$_//s } @s;
-print $buf;
+main( @ARGV );
 
 # eof
