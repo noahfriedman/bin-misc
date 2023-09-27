@@ -12,12 +12,12 @@ my @re =
    qr= <<<$=m,
    qr=URL of the ICANN WHOIS Data Problem.*?\n=i,
    qr=URL of the ICANN Whois Inaccuracy.*?\n=i,
-   qr=(?:NOTICE|TERMS OF USE).*?at any time.\n=s,
-   qr=NOTICE:.*?abide by (?:these terms|this policy).\n=s,
-   qr=NOTICE:.*?for this registration.\n=s,
+   qr=(?:NOTICE|TERMS OF USE).*?at any time.\n=si,
+   qr=(?:NOTICE|TERMS OF USE).*?abide by (?:these terms|this policy).\n=si,
+   qr=NOTICE:.*?for this registration.\n=si,
    qr="?For more information on Whois status codes.*?\n=i,
-   qr=The Data in the.*?DOMAIN AVAILABILITY.\n=s,  # tucows is longer
-   qr=The Data in.*?abide by (?:these terms|this policy).\n=s, # than this
+   qr=The Data in the.*?DOMAIN AVAILABILITY.\n=si,  # tucows is longer
+   qr=The Data in.*?abide by (?:these terms|this policy).\n=si, # than this
    qr=Register \S+ domain name at .*?\n=s,
 
    # NSI/Verisign (whois.networksolutions.com), internic.net
@@ -25,12 +25,15 @@ my @re =
    qr=The Registry database contains ONLY .*? domains and[ \n]Registrars.?=,
 
    # whois.tucows.com / opensrs
+   qr=\s*This company may be contacted.*?questions.\n=s,
+
    # Match labels with blank values, unless that label is RSP.
    # By inserting SKIP dynamically into the regexp for just that label,
    # it won't match.
    qr=^(.*?)(?(?{ $1 eq "Registration Service Provider" })SKIP):\n=m,
 
    qr=The ARIN Registration Services Host.*?NIPRNET Information.\n=s,
+   qr=#\n# ARIN WHOIS.*?Numbers, Ltd.\n#\n=s,
 
    # nic.fr
    qr=.*www.nic.fr/info/whois/dbcopyright.html\n=s,
@@ -83,6 +86,7 @@ sub main
   map { $buf =~ s/$_//g } @re;
   $buf =~ s/(-\d\d)T(\d\d:)/$1 $2/g;  # make iso8601 more readable
   $buf =~ s/\n{3,}/\n\n/g;  # allow up to 1 blank line
+  $buf =~ s/^\s+//;         # leading ws at start of output
   $buf =~ s/\s+$/\n/;       # remove trailing ws and extra newlines at end.
 
   print $buf;
