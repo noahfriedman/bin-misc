@@ -1,23 +1,49 @@
 #!/bin/sh
 
-links_dump()
+w3m_dump()
 {
-    ${LINKS-elinks} \
+    w3m -config /dev/null \
+        -o display_link=false \
+        -o display_link_number=false \
+        -o use_cookie=false \
+        -o accept_cookie=false \
+        -o ssl_verify_server=false \
         -dump \
-        -dump-width 80 \
-        -no-connect  1 \
-        -no-home     1 \
-        -no-numbering  \
-        -no-references \
         "$@"
+}
+
+elinks_dump()
+{
+    elinks -dump \
+           -no-connect  1 \
+           -no-home     1 \
+           -no-numbering  \
+           -no-references \
+           "$@"
+}
+
+links2_dump()
+{
+    links2 -dump \
+           -no-g \
+           -no-connect \
+           "$@"
 }
 
 main()
 {
     ver=${1-'[0-9]+'}
-    links_dump https://fedoraproject.org/wiki/End_of_life |
+
+    # Avoid my wrappers, which I don't need for batch output
+    PATH=/usr/bin:$PATH
+    for prg in w3m elinks links2; do
+        if type $prg >/dev/null 2>&1; then
+            ${prg}_dump https://fedoraproject.org/wiki/End_of_life
+            break
+        fi
+    done |
         sed -E \
-            -e "/^  *Fedora( Core| Linux)? ($ver) +([0-9\-]+) .*/!d" \
+            -e "/^ *Fedora( Core| Linux)? +($ver) +([0-9\-]+) .*/!d" \
             -e 's//\2 \3/' \
             -e '/^. /s/^/ /'
 }
