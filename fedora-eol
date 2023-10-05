@@ -2,6 +2,9 @@
 
 w3m_dump()
 {
+    W3M_DIR=/do-not-create
+    export W3M_DIR
+
     w3m -config /dev/null \
         -o display_link=false \
         -o display_link_number=false \
