@@ -67,6 +67,7 @@ main()
       (let ((outfn '%s)
             (symlist (nreverse '(%s)))
             (result nil))
+        (defvar pp-default-function 'pp-28) ; emacs 30
         (condition-case nil
             (mapcar 'require '($FEATURES))
           (error nil))
