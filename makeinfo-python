@@ -2,6 +2,10 @@
 # $Id$
 
 # Requires python3-sphinx
+if ! type sphinx-build-3 > /dev/null 2>&1; then
+    echo "Need python3-sphinx installed." 1>&2
+    exit 1
+fi
 
 case $# in
     0 ) { echo "Usage: ${0##*/} [version]"
