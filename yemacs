@@ -65,9 +65,6 @@ main()
         -eval ) client "$@" ;;
     esac
 
-    : ${LD_LIBRARY_PATH:='$ORIGIN/../$LIB'}
-    export LD_LIBRARY_PATH
-
     YEMACS_EXECDIR=$ydir/src
     PATH=$YEMACS_EXECDIR:$PATH
     export YEMACS_EXECDIR PATH
