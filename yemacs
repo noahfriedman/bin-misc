@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# $Id: yemacs,v 1.20 2019/01/24 06:34:47 friedman Exp $
 
 client()
 {
-    PATH=$ydir/src:$ydir/lib-src:$PATH
+    PATH=$YDIR/src:$YDIR/lib-src:$PATH
     EMACS_SERVER_FILE=gnuedit
     export EMACS_SERVER_FILE
     exec emacsclient --quiet --no-wait --eval "$@"
@@ -11,35 +10,42 @@ client()
 
 locate_build()
 {
-    ydir=
-    for dir in ${builddirs[@]}; do
-        test -d $dir || continue
-        for subdir in $( cd $dir && ls -1r ); do
-            if [ -d $dir/$subdir -a -f $dir/$subdir/src/emacs ]; then
+    YDIR=
+    for dir in "${builddirs[@]}"; do
+        test -d "$dir" || continue
+        for subdir in $( cd "$dir" && ls -1r ); do
+            if [ -d "$dir/$subdir" -a -f "$dir/$subdir/src/emacs" ]; then
                 # Use /bin/pwd to follow symlinks
-                ydir=$( cd $dir/$subdir && /bin/pwd )
+                # This resolves e.g. a symlink named 'current' or 'default'
+                # which will sort ahead of timestamped directories.
+                YDIR=$( cd "$dir/$subdir" && /bin/pwd )
                 break 2
             fi
         done
     done
-
-    case $ydir in
-        '' ) return 1 ;;
-    esac
+    test -z "$YDIR" && return 1
 
     case $progname in
-        emacs ) progname="$progname (${ydir##*/})" ;;
+        emacs ) progname="$progname (${YDIR##*/})" ;;
     esac
 
-    test -e "$ydir/src/$progname"  || ln -s emacs "$ydir/src/$progname"
-    test -f "$ydir/src/emacs.pdmp" || return 0
+    if [ -e "$YDIR/src/$progname" ] || ln -s emacs "$YDIR/src/$progname"
+    then
+        YEMACS_EXECDIR=$YDIR/src
+        PATH=$YEMACS_EXECDIR:$PATH
+        export YEMACS_EXECDIR PATH
+    else
+        # directory is read-only to us so don't create a pretty process alias.
+        progname=$YDIR/src/emacs
+    fi
+    :
 }
 
 main()
 {
     ulimit -c unlimited  # I want core dumps from emacs
 
-    builddirs=( $HOME/src/emacs/build
+    builddirs=( "$HOME"/src/emacs/build
                 /export/src/emacs/build )
 
     case $1 in
@@ -65,10 +71,7 @@ main()
         -eval ) client "$@" ;;
     esac
 
-    YEMACS_EXECDIR=$ydir/src
-    PATH=$YEMACS_EXECDIR:$PATH
-    export YEMACS_EXECDIR PATH
-    exec -a "$progname" $ydir/src/emacs "$@"
+    exec -a "$progname" "$YDIR/src/emacs" "$@"
     exec emacs "$@"
 }
 
