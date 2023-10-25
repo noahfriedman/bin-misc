@@ -1,0 +1,163 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings qw(all);
+
+use lib "$ENV{HOME}/lib/perl";
+use NF::PrintObject qw(:all);
+
+use Symbol;
+use RPM2;
+
+$object_pp_option{verbose} = 3;
+
+my @rmtags = (qw(HEADERIMMUTABLE
+                 RSAHEADER
+                 SHA1HEADER
+                 SIGMD5
+                 SIGPGP
+
+                 BASENAMES DIRNAMES DIRINDEXES
+
+                 CHANGELOGTIME CHANGELOGNAME CHANGELOGTEXT
+
+                 C CONFLICTS
+                 CLASSDICT
+
+                 DIRINDEXES
+                 FILECOLORS
+
+                 ign-FILEDEPENDSN ign-FILEDEPENDSX
+                 ign-FILEDEVICES
+
+                 ign-FILEDIGESTS -ign-FILEMD5S
+                 -ignFILEINODES -ign-FILERDEVS
+
+                 N
+
+                 O OBSOLETES
+
+                 P PROVIDES
+
+                 R REQUIRES
+
+                 V
+                ));
+my %rmtags = map { $_ => undef } @rmtags;
+
+my @rmfilearray = (qw(DEPENDSDICT
+                      FILECLASS
+                      FILEFLAGS
+                      FILEGROUPNAME
+                      FILELANGS
+                      FILELINKTOS
+                      FILEMODES
+                      FILEMTIMES
+                      FILESIZES
+                      FILESTATES
+                      FILEUSERNAME
+                      FILEVERIFYFLAGS
+                    ));
+
+my @rmreqarray = (qw(REQUIREFLAGS
+                     REQUIRENAME
+                     REQUIREVERSION
+
+                   ));
+
+my @rmprovarray = (qw(PROVIDEFLAGS
+                      PROVIDENAME
+                      PROVIDEVERSION
+                    ));
+
+
+sub print_symtbl
+{
+  my $sym = shift;
+  my $symtbl = qualify_to_ref( $sym );
+
+  print_object( $sym, *$symtbl{HASH} );
+  for my $key (sort keys %{*$symtbl{HASH}})
+    {
+      next unless $key =~ /::$/;
+      print_symtbl( $sym . $key );
+    }
+}
+
+my $tagwidth = 0;
+my @tags = map { (my $t = $_) =~ s/^RPMTAG_//;
+                 $tagwidth = length $t if length $t > $tagwidth;
+                 $t;
+               } sort keys %RPM2::header_tag_map;
+
+sub main
+{
+  print_symtbl ('RPM2::');
+  #print_object ('RPM2::constants',      \%RPM2::constants);
+  #print_object ('RPM2::header_tag_map', \%RPM2::header_tag_map);
+  exit;
+
+  my $rpmdb = RPM2->open_rpm_db;
+  my @hdr = $rpmdb->find_by_name ($_[0]);
+
+  for my $rpm (@hdr)
+    {
+      #print_object ('rpm', $rpm);
+
+      my $mlpad = " " x ($tagwidth + 3);
+
+      for my $tag (@tags)
+        {
+          (my $name = $tag) =~ s/^RPMTAG_//;
+
+          next if exists $rmtags{$name};
+          my @data = eval { $rpm->tag ($name) };
+          next unless @data;
+
+          my $text = join ("\n", @data);
+          $text =~ s/\n/\n$mlpad/gm;
+          printf ("%-${tagwidth}s = %s\n", $name, $text);
+        }
+    }
+}
+
+main (@ARGV);
+
+
+sub xcat
+{
+  sysopen( my $fh, $_[0], 0 ) or return;
+  local $/ = undef;
+  return <$fh>;
+}
+
+sub tags
+{
+  local $_ = xcat( '/usr/include/rpm/rpmtag.h' );
+  my @tag;
+
+  s/^.*(?:unimplemented).*?\n//mg;
+  while (/^\s*RPMTAG_(\S+)/mg) { push @tag, lc( $1 ) }
+  return @tag;
+}
+
+sub max    { my $m = shift; map { $m = $_ if $_ > $m } @_; $m }
+sub maxlen { max( map { length( $_ ) } @_ ) }
+
+sub xmain
+{
+  my @tag = tags();
+  map { print $_, "\n" } sort @tag;
+
+  unless (@_)
+    {
+      map { print $_, "\n" } sort @tag;
+      return 0;
+    }
+
+  my $mwidth = maxlen( @tag );
+  for my $rpm (@_)
+    {
+      last;
+    }
+}

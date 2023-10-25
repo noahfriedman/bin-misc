@@ -1,0 +1,51 @@
+#!/usr/bin/perl
+
+my %color_idx  = ( black    => 0,
+                   red      => 1,
+                   green    => 2,
+                   yellow   => 3,
+                   blue     => 4,
+                   magenta  => 5,
+                   cyan     => 6,
+                   white    => 7,
+
+                   normal   => 9,
+                 );
+
+my %normal_color =
+  ( map { $_ => [  30 + $color_idx{$_},
+                   40 + $color_idx{$_},
+                ]
+        } keys %color_idx
+  );
+
+my %bright_color =
+  ( map { $_ => [  90 + $color_idx{$_},
+                  100 + $color_idx{$_},
+                ]
+        } keys %color_idx
+  );
+
+#my $CSI = "\e[";
+
+sub main
+{
+  my @names = sort { $color_idx{$a} <=> $color_idx{$b} } keys %color_idx;
+  my @col = ("\e[0;%sm%s\e[0;%sm",
+             "\e[1;%smbold %s\e[0;%sm",
+             "\e[0;%smbright %s\e[0;%sm",
+             "\e[1;%smbold bright %s\e[0;%sm\n");
+  my $fmt = join( "\t\t", @col );
+
+  for my $name (@names)
+    {
+      my @normal = ($normal_color{$name}->[0], $name, $normal_color{normal}->[0]);
+      my @bright = ($bright_color{$name}->[0], $name, $bright_color{normal}->[0]);
+
+      printf( $fmt, @normal, @normal, @bright, @bright );
+    }
+}
+
+main( @ARGV );
+
+# eof
