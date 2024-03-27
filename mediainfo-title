@@ -1,0 +1,12 @@
+#!/bin/sh
+
+for f in "$@"; do
+    case $# in
+        1 ) : ;;
+        * ) echo -n "$f:" '' ;;
+    esac
+    mediainfo --Full --Output=JSON "$f" |
+        jq '.media.track[] | select(."@type"=="General") | .Movie'
+done
+
+# eof
