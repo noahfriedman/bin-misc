@@ -2,7 +2,9 @@
 
 client()
 {
-    PATH=$YDIR/src:$YDIR/lib-src:$PATH
+    case ${YDIR:+isset} in
+        isset ) PATH=$YDIR/src:$YDIR/lib-src:$PATH ;;
+    esac
     EMACS_SERVER_FILE=gnuedit
     export EMACS_SERVER_FILE
     exec emacsclient --quiet --no-wait --eval "$@"
@@ -53,7 +55,7 @@ main()
         *      ) progname=emacs          ;;
     esac
 
-    locate_build || exit $?
+    locate_build
 
     case $1 in
         -attach )
@@ -71,7 +73,9 @@ main()
         -eval ) client "$@" ;;
     esac
 
-    exec -a "$progname" "$YDIR/src/emacs" "$@"
+    case ${YDIR:+isset} in
+        isset ) exec -a "$progname" "$YDIR/src/emacs" "$@" ;;
+    esac
     exec emacs "$@"
 }
 
