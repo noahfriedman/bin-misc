@@ -25,6 +25,7 @@ my @re =
    qr=^.*?: REDACTED FOR PRIVACY\n=m,
    qr=^.*?: Registration Private\n=m,
    qr=^.*?: Not Available From Registry\n=m,
+   qr=^.*?: GDPR Masked\n=m,
 
    # NSI/Verisign (whois.networksolutions.com), internic.net
    qr=Get a FREE domain.*?http://www.networksolutions.com\n=s,
