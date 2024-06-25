@@ -1,111 +1,164 @@
-#!/bin/sh
-
+#!/usr/bin/env bash
 # tree-diff --- recursive diff with options I typically use
 # Author: Noah Friedman <friedman@splode.com>
 # Public domain.
 
-# $Id: tree-diff,v 1.8 2009/04/29 20:29:35 friedman Exp $
-
-exclude_pats=${EXCLUDE_PATS-'
-    CVS
-    RCS
-    {arch}
-    .git
-    .hg
-    .svn
-    _MTN
-
-    .arch-ids
-    .arch-inventory
-    .cvsignore
-    .gitignore
-    .hgignore
-
-    *~
-    #*#
-    .#*
-
-    TAGS
-
-    core
-    core.[0-9]*
-    *.core
-
-    *.[ao]
-    *.obj
-    *.so
-    lib*.so.*
-    *.dll
-    *.dylib
-    *.elc
-    *.class
-    *.dvi
-
-    autom4te.cache
-    config.log
-    config.status
-
-'}${EXCLUDE_AC+'
-
-    ChangeLog*
-    Makefile
-    Makefile.*
-    config.guess
-    config.sub
-    configure
-    configure.in
-    config.h.in
-    install-sh
-    ltmain.sh
-    *.m4
-'}
 
 set -o noglob
 
-if diff --version 2>&1 | grep 'GNU' > /dev/null; then
-  case $1 in
-    --no-missing ) shift ;;
-    * ) set fnord --new-file ${1+"$@"}; shift ;;
-  esac
+: ${DIFF:=$(type -p gdiff || type -p diff)}
+: ${FIND:=$(type -p gfind || type -p find)}
 
-  for pat in $exclude_pats ; do
-    set fnord --exclude "$pat" ${1+"$@"}
-    shift
-  done
 
-  exec diff --ignore-blank-lines \
-            --ignore-space-change \
-            --recursive \
-            --show-c-function \
-            --unified \
-         ${1+"$@"}
-else
-  echo "tree-diff: warning: not using GNU diff" 1>&2
+exclude_pats=(
+    'CVS'
+    'RCS'
+    '{arch}'
+    '.git'
+    '.hg'
+    '.svn'
+    '_MTN'
 
-  n=$#
-  m=`expr $# - 1`
-  eval "d1=\"\$$m\" d2=\"\$$n\""
+    '.arch-ids'
+    '.arch-inventory'
+    '.cvsignore'
+    '.gitignore'
+    '.hgignore'
 
-  set fnord
-  shift
-  for pat in $exclude_pats ; do
-    set fnord -o -name "$pat" ${1+"$@"}
-    shift
-  done
-  shift # get rid of leading '-o'
+    '*~'         # emacs backup
+    '#*#'        # emacs autosave
+    '.#*'
+    '*.el[cn]'   # emacs compiled lisp or native-compiled lisp
+    '*.pdmp'     # emacs portable dump image
+    'TAGS'
 
-  for dir in "$d1" "$d2"; do
-    (cd "$dir" && find . \( ${1+"$@"} \) -prune -o -type f -print)
-  done \
-   | sort -u \
-   | sed -e 's=^\./==' \
-   | while read file ; do
-       if [ -f "$d1/$file" ] && [ -f "$d2/$file" ]; then
-         # Do all non-gnu versions of diff support -b?
-         # solaris, irix, osf1, and hpux do.
-         diff -b -c "$d1/$file" "$d2/$file"
-       fi
-     done
-fi
+    'core'
+    'core.[0-9]*'
+    '*.core'
+
+    '*.dll'	'*.DLL'
+    '*.lib'	'*.LIB'
+    '*.obj'	'*.OBJ'
+
+    '*.[ao]'
+    '*.so'
+    'lib*.so.*'
+    '*.dylib'
+
+    '*.py[co]'
+    '*.class'
+
+    '*.dvi'
+    '*.pdf'
+
+    'autom4te.cache'
+    'config.log'
+    'config.status'
+)
+
+exclude_ac=(
+    'ChangeLog*'
+    'Makefile'
+    'Makefile.*'
+    'config.guess'
+    'config.sub'
+    'configure'
+    'configure.in'
+    'config.h.in'
+    'install-sh'
+    'ltmain.sh'
+    '*.m4'
+)
+
+
+gnu()
+{
+    declare -a gdiff_args=(
+        # --recursive		# -r
+        # --unified		# -u
+        # --ignore-blank-lines	# -B
+        # --ignore-space-change	# -b
+        # --show-c-function	# -p
+        # --exclude-from=FILE   # -X
+        -ruBbp
+        # --ignore-file-name-case
+        # --no-dereference
+        # --strip-trailing-cr
+    )
+
+    if [ -e /dev/stdin ]; then
+        for pat in "${exclude_pats[@]}"; do
+            echo "$pat"
+        done | $DIFF "${gdiff_args[@]}" -X /dev/stdin "$@"
+    else
+        exclude_file=${TMPDIR:-/tmp}/exclude$$
+        trap 'rm -f "$exclude_file"' 0 1 2 3 15
+        for pat in "${exclude_pats[@]}"; do
+            echo "$pat"
+        done > "$exclude_file"
+
+        $DIFF "${gdiff_args[@]}" -X "$exclude_file" "$@"
+    fi
+}
+
+
+non_gnu()
+{
+    #echo "${0##*/}: warning: not using GNU diff." 1>&2
+
+    local dir1=${@:0-2:1}
+    local dir2=${@:0-1:1}
+    if [ $# -gt 2 ]; then
+        declare -a diff_args=( "${@:1:$#-2}" )
+    else
+        declare -a diff_args=( -b -c )
+    fi
+
+    declare -a names=( -name "${exclude_pats[0]}" )
+    for pat in "${exclude_pats[@]:1}"; do
+        # n.b. bash 3.x doesn't support += with arrays
+        names=( "${names[@]}" -o -name "$pat" )
+    done
+
+    for dir in "$dir1" "$dir2"; do
+        (cd "$dir" && $FIND . \( "${names[@]}" \) -prune -o -type f -print)
+    done                  |
+        sort -u           |
+        sed -e 's=^\./==' |
+        while read file ; do
+            local file1=$dir1/$file
+            local file2=$dir2/$file
+
+            if [ -f "$file1" ] && [ -f "$file2" ]; then
+                $DIFF "${diff_args[@]}" "$file1" "$file2"
+            elif [ -f "$file1" ]; then
+                echo "Only in $dir1: $file"
+            else
+                echo "Only in $dir2: $file"
+            fi
+        done
+}
+
+main()
+{
+    if [ $# -lt 2 ]; then
+        echo "${0##*/}: must at least supply two directory names." 1>&2
+        exit 1
+    fi
+
+    case ${EXCLUDE_AC:+isset} in
+        # n.b. bash 3.x doesn't support += with arrays
+        isset ) exclude_pats=( "${exclude_pats[@]}" "${exclude_ac[@]}" ) ;;
+    esac
+
+    case $( $DIFF --version 2>&1 ) in
+        *GNU*           )     gnu "$@" ;;
+        # Some system diffs (e.g. freebsd 13+) support some GNUish flags
+        *--ignore-case* )     gnu "$@" ;;
+        *               ) non_gnu "$@" ;;
+    esac
+}
+
+main "$@"
 
 # eof
