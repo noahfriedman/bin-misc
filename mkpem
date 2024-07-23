@@ -156,7 +156,9 @@ backup_and_set_keyopts()
 printconf()
 {
     echo "[ req ]"
-    echo RANDFILE               = /dev/null
+    # 2024-07-22 openssl 3.2.x blocks writing to non-normal files
+    #            but it also doesn't seem to create ~/.rnd either.
+    #echo RANDFILE               = /dev/null
     echo prompt                  = no
 
     if [ ${opt[extensions]} != f ]; then
