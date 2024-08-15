@@ -15,7 +15,7 @@ my @re =
    qr=(?:NOTICE|TERMS OF USE).*?at any time( without notice)?.\n=si,
    qr=(?:NOTICE|TERMS OF USE).*?abide by (?:these terms|this policy).\n=si,
    qr=NOTICE:.*?for this registration.\n=si,
-   qr="?For more information on Whois status codes.*?\n=i,
+   qr="?For more information on Whois status codes.*?(?:\n|$)=i,
    qr=The Data in the.*?DOMAIN AVAILABILITY.\n=si,  # tucows is longer
    qr=The Data in.*?abide by (?:these terms|this policy).\n=si, # than this
    qr=Register \S+ domain (?:name|now) at .*?\n=s,
@@ -26,6 +26,8 @@ my @re =
    qr=^.*?: Registration Private\n=m,
    qr=^.*?: Not Available From Registry\n=m,
    qr=^.*?: GDPR Masked\n=m,
+   qr=^.*?: Redacted for Privacy Purposes\n=m,
+   qr=^.*?: Privacy service provided by Withheld for Privacy.*?\n=m,
 
    # NSI/Verisign (whois.networksolutions.com), internic.net
    qr=Get a FREE domain.*?http://www.networksolutions.com\n=s,
@@ -60,6 +62,7 @@ my @re =
    qr=Please register your domains.*?abide by this policy.\n=si,
    qr=https://www.icann.org/resources/.*?\n=,
    qr=^.*?: Contact Privacy Inc. Customer \d+\n=m,
+
    # Elide registrar address+phone
    qr=^(\S+) Street: 96 Mowat Ave\n\1 City: Toronto\n\1 State/Province: ON\n\1 Postal Code: M4K 3K1\n\1 Country: CA\n\1 Phone: \+1.4165385487\n=m,
 
@@ -69,6 +72,9 @@ my @re =
    # whois.godaddy.com
    qr=^(\S+) Street: DomainsByProxy.com\n\1 Street: 2155 E Warner Rd\n\1 City: Tempe\n\1 State/Province: Arizona\n\1 Postal Code: 85284\n\1 Country: US\n\1 Phone: \+1.4806242599\n\1 Email: Select.*?\n=m,
 
+   # whois.spaceship.com
+   qr=^(\S+) Street: Kalkofnsvegur 2\n\1 City: Reykjavik\n\1 State/Province: Capital Region\n\1 Postal Code: 101\n\1 Country: IS\n\1 Phone: \+354\.4212434\n\1 Email: http.*\n=m,
+
    #whois.markmonitor.com
    qr=If you wish to contact.*?----\n=s,
    qr=^.*?: Select Request Email Form.*?\n=m,
@@ -76,6 +82,8 @@ my @re =
    # whois.corporatedomains.com
    qr=Corporation Service Company.*?cscglobal.com\n=s,
 
+   # grs-whois.aliyun.com
+   qr=Important Reminder: .*?hichina.com\n=s,
   );
 
 sub whois
