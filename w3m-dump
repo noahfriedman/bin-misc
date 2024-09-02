@@ -6,29 +6,39 @@ export LANG=C.utf8
 
 user_agent="Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:50.0) Gecko/20100101 Firefox/50.0"
 
-flags=( -o display_borders=true
+# Options are listed in the same order as output by "w3m -show-option"
+flags=( -config /dev/null
+
+        # section[0]: Display Settings
+        -o tabstop=8
+        -o frame=true
+        -o display_link_number=false  # true to get references
+        -o alt_entity=false
         -o graphic_char=1
-
-        -o display_link=false
-        -o display_link_number=false
-        -o display_ins_del=1
+        -o display_borders=false
+        -o disable_center=false
+        -o fold_textarea=true
+        -o display_ins_del=true
         -o ignore_null_img_alt=false
+        -o display_image=false
         -o pseudo_inlines=false
+        -o fold_line=false
 
+        # section[5]: Network Settings
+        -o user_agent="$user_agent"
+        -o follow_redirection=8
+
+        # section[7]: SSL Settings
+        -o ssl_verify_server=false
+
+        # section[8]: Cookie Settings
+        -o use_cookie=false
+        -o accept_cookie=false
+
+        # section[9]: Charset Settings
         -o display_charset=utf-8
         -o document_charset=utf-8
         -o system_charset=utf-8
-        -o alt_entity=false
-
-        -o tabstop=8
-        -o fold_line=false
-
-        -o use_cookie=false
-        -o accept_cookie=false
-        -o ssl_verify_server=false
-        -o user_agent="$user_agent"
-
-        -config /dev/null
 
         -cols 78
         -dump
