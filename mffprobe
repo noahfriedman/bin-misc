@@ -5,8 +5,12 @@ export LC_CTYPE
 
 args=(
     -hide_banner
-    -loglevel		error
+    -loglevel		repeat+level+error
+
     -print_format	json
+    -unit
+    -prefix             -byte_binary_prefix
+    -sexagesimal
 
     -show_format
     #-show_packets
@@ -16,6 +20,8 @@ args=(
     -show_chapters
     #-show_data            # show extradata in hex+ascii
     -show_private_data
+    #-show_optional_fields always
+
     #-show_entries	'format      : streams     : programs     : chapters'
     #-show_entries	'format_tags : stream_tags : program_tags : chapter_tags'
 
