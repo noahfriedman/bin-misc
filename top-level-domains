@@ -1,0 +1,29 @@
+#!/bin/sh
+# top-level-domains -- generate list of global top level domains
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2024-11-31
+# Public domain
+
+GET() { curl -s "$@"; }
+
+iso3166()
+{
+    GET https://ftp.ripe.net/iso3166-countrycodes.txt |
+        sed -nEe '/^[A-Z][A-Z].*[ 	]([A-Z][A-Z])[ 	].*/s//\1/p'
+}
+
+icann() # fucking rent-seeking parasites
+{
+    GET https://data.iana.org/TLD/tlds-alpha-by-domain.txt | sed -e '/^#/d'
+}
+
+main()
+{
+    { iso3166
+      icann
+    } | tr '[A-Z]' '[a-z]' | sort -u
+}
+
+main "$@"
+
+# eof
