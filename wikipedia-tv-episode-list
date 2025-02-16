@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# wikipedia-tv-episode-list -- scrape tv episode titles from wikipedia pages
+# Author: Noah Friedman <friedman@splode.com>
+# Created: 2024-11-31
+# Public domain
+
+# Commentary:
+
+# Examples of page names:
+#
+# 	List_of_Buffy_the_Vampire_Slayer_episodes
+# 	List_of_Hogan's_Heroes_episodes
+# 	List_of_Newhart_episodes
+# 	List_of_The_Bob_Newhart_Show_episodes
+
+# Code:
+
+setup()
+{
+    local page=$*
+    page=${page// /_}
+
+    URL=https://en.wikipedia.org/w/api.php
+
+    declare -g -A field=(
+        [action]=parse
+          [page]=$page
+          [prop]=text
+        [format]=json
+    )
+
+    TMPFILE=`mktemp -u`
+    trap 'rm -f "$TMPFILE"' 0 1 2 3 15
+
+    TTYOUT=false
+    if [ -t 1 ]; then TTYOUT=true; fi
+}
+
+getfields()
+{
+    declare -n arry=${1:-field}
+    declare -a parm=()
+    local k v
+    for k in "${!arry[@]}"; do
+        v=${arry[$k]}
+        if [ $# -gt 2 ]; then
+            parm+=( "[$k]=\"$v\"" )
+        else
+            parm+=( "$k=$v" )
+        fi
+    done
+    local IFS=${2:-'&'}
+    echo "${parm[*]}"
+}
+
+GET()
+{
+    curl -s "${1:-$URL?$(getfields)}"
+}
+
+vGET()
+{
+    if ! $TTYOUT; then
+        local diag="${PS4-+ }${FUNCNAME[1]}	${field[page]}"
+        case ${field[section]} in
+            '' ) : ;;
+            * ) diag=$diag[${field[section]}] ;;
+        esac
+        echo "$diag"  1>&2
+    fi
+    GET "$@"
+}
+
+wikifetch()
+{
+    declare -I field
+    field[prop]=wikitext
+
+    vGET | jq -r '.parse.wikitext."*"'
+}
+
+htmlfetch()
+{
+    declare -I field
+    field[prop]=text
+
+    vGET | jq -r '.parse.text."*"'
+}
+
+sectionfetch()
+{
+    declare -I field
+    field[prop]=sections
+    unset field[section]
+
+    vGET | jq -r '.parse.sections.[]'
+}
+
+
+######
+##
+######
+
+sections()
+{
+    sectionfetch |
+        jq -r ' if (.line | startswith( $startpat ))
+		then .index + "\t" + .line
+		else empty
+		end' \
+	  --arg startpat "$1"
+}
+
+getsection()
+{
+    declare -I field
+    field[section]=$1
+
+    wikifetch > "$TMPFILE"
+    local indirect=`sed -ne '/^{{:\(.*\)}}/s//\1/p' "$TMPFILE"`
+    case $indirect in
+        '' ) cat "$TMPFILE" ;;
+        *  ) getsection_indirect "$indirect" ;;
+    esac
+}
+
+getsection_indirect()
+{
+    local page=$*
+    page=${page// /_}
+
+    declare -I field
+    field[page]=$page
+    unset field[section]
+
+    local section rest
+    sections "Episodes" |
+        while read section rest; do
+            getsection $section
+        done
+}
+
+
+######
+##
+######
+
+main()
+{
+    setup "$@"
+    sections "Season " |
+        { let i=1
+          while read section rest; do
+              echo '**' Season $i:
+              getsection $section |
+                  awk 'BEGIN { i=1 }
+			/^\s*\|\s*Title\s*=/ {
+                                sub(/^[^=]+=\s*/, "");
+                                gsub(/[][]/, "");
+                                sub(/.*\|/, "");
+                                printf "\t%02d\t%s\n", i++, $0
+			}'
+              echo
+              i=$(($i + 1))
+          done
+        }
+}
+
+main "$@"
+
+# eof
