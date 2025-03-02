@@ -1,83 +1,565 @@
 #!/usr/bin/env python3
-# pip-search -- custom fork of Victor Garric's pip_search package
+# pip-search -- command line search for python modules
 
 # Author: Noah Friedman <friedman@splode.com>
-#         Victor Garric <victor.garric@gmail.com>
-# Forked: 2021-11-16
+# Created: 2021-11-16
+# Updated: 2025-03-01
 # License: MIT
 
 # Commentary:
 
-# This fork strips all of the color highlighting, urls, and box graphcs.
+# This program can be used to search for python modules matching the search
+# terms provided on the command line.  It can also be used to retrieve
+# extended information about a specific package even if it's not installed,
+# something the `pip' command cannot do.
+
+# Search results are returned in a plain table.
 # One line is printed for each module regardless of terminal width.
 # This is easier to view in Emacs buffers or to sort by column without
-#   building sorting into this script itself.
-# Other minor changes include displaying ISO8601 dates.
+# building sorting into this script itself.
 
-# To sort by date:    pip-search [query] | sort -bk3,3
-# To sort by version: pip-search [query] | sort -k2,2g
-
-# Upstream code at https://github.com/victorgarric/pip_search/
-# PiPy modules required: beautifulsoup4, requests, rich
-
-# Complain to Noah about anything in this fork.
-# If anything is broken it's my fault.
+# As of late 2024, retrieving version information requires more round
+# trips, so is slower.  Sorting by relevance (default) or date (-d) on
+# server side will return different results.
+#
+# To further sort relevant resutls by date:
+#	pip-search    [query] | sort -bk2,2
+#	pip-search -V [query] | sort -bk3,3
+#
+# To sort by version:
+#	pip-search -V [query] | sort -k2,2g
 
 # Code:
 
-import re
-import sys
 import argparse
+import hashlib
+import json
+import re
 import requests
+import string
+import sys
 
-from bs4          import BeautifulSoup
-from rich.console import Console
-from rich.table   import Table
+from   urllib.parse        import urljoin
+from   requests.exceptions import RequestException
 
-api_url = 'https://pypi.org/search/'
+from   bs4                 import BeautifulSoup
+from   rich.console        import Console
+from   rich.markdown       import Markdown, Heading
 
-def search( query ):
-    snippets = []
-    s = requests.Session()
-    for page in range( 1, 3 ):
-        params = { 'q'    : query,
-                   'page' : page }
-        r = s.get( api_url, params=params )
-        soup = BeautifulSoup( r.text, 'html.parser' )
-        snippets += soup.select( 'a[class*="package-snippet"]' )
-        if not hasattr( s, 'start_url' ):
-            s.start_url = r.url.rsplit( '&page', maxsplit=1 ).pop( 0 )
+try:
+    from lxml              import etree       as ET
+except (ImportError, ModuleNotFoundError):
+    from xml.etree         import ElementTree as ET
 
+
+class PS_Console( Console ):
+    def __init__( self, *args, **kwargs ):
+        kwargs.setdefault( 'color_system', None )
+        kwargs.setdefault( 'emoji',        False )
+        super().__init__( *args, **kwargs )
+
+
+# Override Markdown render to be left-justified and without huge boxy banner
+class PS_Heading( Heading ):
+    def __rich_console__( self, console, options ):
+        self.text.justify = "left"
+        yield self.text
+
+
+class PS_Markdown( Markdown ):
+    elements = dict( ( *Markdown.elements.items(),  # copy parent class
+                       ('heading_open', PS_Heading) ))
+
+
+class FastlySession( requests.Session ):
+    _fst_re_path = re.compile( r'/(.*)/script.js' )
+    _fst_re_json = re.compile( r'init\(\[(.*?)\], *"(.+?)"' )
+
+    def __init__( self ):
+        super().__init__()
+        self._fst_inited = False
+
+
+    def get( self, url, **kwargs ):
+        resp = super().get( url, **kwargs )
+        if self._fst_inited:
+            return resp
+        elif self._fst_do_challenge( resp ):
+            self._fst_inited = True
+            return super().get( url, **kwargs )
+        else:
+            return resp
+
+
+    def _fst_do_challenge( self, resp ):
+        if not resp.headers[ 'content-type' ].startswith( 'text/html' ):
+            return False
+        challenge = self._fst_get_challenge( resp )
+        if challenge and self._fst_compute_challenge_answer( challenge ):
+            return self._fst_send_challenge_answer( challenge )
+
+
+    def _fst_get_challenge( self, resp ):
+        try:
+            path     = self._fst_re_path.findall( resp.text )[0]
+
+            scr_url  = urljoin( resp.url, f'/{path}/script.js' )
+            scr_resp = super().get( scr_url )
+
+            found    = self._fst_re_json.findall( scr_resp.text )[0]
+            json_    = json.loads( found[ 0 ] )
+            token    = found[ 1 ]
+
+            return { 'resp'  : scr_resp,
+                     'path'  : path,
+                     'json'  : json_,
+                     'token' : token, }
+        except:
+            pass  # raise for debugging
+
+
+    def _fst_compute_challenge_answer( self, challenge ):
+        data  = challenge[ 'json' ][ 'data' ]
+        base  = data[ 'base' ]
+        hash_ = data[ 'hash' ]
+        chars = string.ascii_letters + string.digits
+        for c1 in chars:
+            for c2 in chars:
+                c = base + c1 + c2
+                if hashlib.sha256( c.encode() ).hexdigest() == hash_:
+                    challenge[ 'answer' ] = c1 + c2
+                    return True
+
+
+    def _fst_send_challenge_answer( self, challenge ):
+        data = challenge[ 'json' ][ 'data' ]
+        post_data = { 'token' : challenge[ 'token' ],
+                      'data'  : [{ 'ty'     : 'pow',
+                                   'base'   : data[ 'base' ],
+                                   'hmac'   : data[ 'hmac' ],
+                                   'expires': data[ 'expires' ],
+                                   'answer' : challenge[ 'answer' ],
+                                 }], }
+        scr_url  = challenge[ 'resp' ].url
+        path     = challenge[ 'path' ]
+        ans_url  = urljoin( scr_url, f'/{path}/fst-post-back' )
+        ans_resp = self.post( ans_url, json=post_data )
+        if ans_resp.status_code == 200:
+            return True
+        else:
+            raise RequestException( ans_resp )
+
+
+class PyPiSession( FastlySession ):
+    _pp_default_headers = {
+        'User-Agent' : ' '.join(( 'Mozilla/5.0',
+                                  '(X11; Fedora; Linux x86_64; rv:114.0)',
+                                  'Gecko/20100101 Firefox/114.0', )),
+
+        'Accept'     : ','.join(( 'application/vnd.pypi.simple.v1+json',
+                                  'application/json', )),
+    }
+
+    def __init__( self ):
+        super().__init__()
+        if self._pp_default_headers:
+            self.headers.update( self._pp_default_headers )
+
+
+    def get( self, url='/', ignerr=False, **kwargs ):
+        fullurl = urljoin( 'https://pypi.org', url )
+        resp = super().get( fullurl, **kwargs )
+        if ignerr or resp.status_code == 200:
+            return resp
+        else:
+            fmt = '{} {}, URL = {}'
+            msg = fmt.format( resp.status_code, resp.reason, url )
+            raise RequestException( msg )
+
+    ######
+
+    def get_simple( self, path, **param ):
+        url  = f'/simple/{path}'
+        resp = self.get( url, **param )
+        return json.loads( resp.text )
+
+
+    def get_pypi( self, path, **param ):
+        url  = f'/pypi/{path}/json'
+        resp = self.get( url, **param )
+        return json.loads( resp.text )
+
+
+    def get_rss( self, path, **param ):
+        url  = f'/rss/{path}'
+        resp = self.get( url, **param )
+        return resp.text
+
+
+    ######
+
+    def info( self, pkg ):
+        return self.get_pypi( pkg )
+
+
+    def packages( self, pkg=None ):
+        return self.get_rss( 'packages.xml' )
+
+
+    def releases( self, pkg ):
+        return self.get_rss( f'project/{pkg}/releases.xml' )
+
+
+    def updates( self, pkg=None ):
+        return self.get_rss( 'updates.xml' )
+
+    ######
+
+    def search( self, query, args ):
+        if isinstance( query, list ):
+            query = ' '.join( query )
+
+        params    = { 'q' : query, }
+        if args.date_sort:
+            params[ 'o' ] = '-created'
+
+        RPP      = 20 # Results per page as of 2024
+        minres   = max( args.num_results, RPP )
+        pages    = minres // RPP
+        if minres % RPP != 0:
+            pages += 1
+
+        matches  = None
+        snippets = []
+        for page in range( 1, pages + 1 ):
+            params[ 'page' ] = page
+            resp = self.get( '/search', params=params, ignerr=True )
+            if resp.status_code != 200:
+                break
+            soup = BeautifulSoup( resp.text, 'html.parser' )
+            if matches is None: # get total count of matches
+                fragment = soup.select( 'div>div>p>strong' )
+                if fragment:
+                    matches = fragment[0].text
+            snippets += soup.select( 'a[class*="package-snippet"]' )
+
+        rows = []
+        for snippet in snippets:
+            pkg  = snippet.select_one( 'span[class*="package-snippet__name"]'     ).text
+            rel  = snippet.select_one( 'span[class*="package-snippet__created"]'  )
+            date = rel.select_one( 'time' ).attrs[ 'datetime' ][ 0:10 ]
+            desc = snippet.select_one( 'p[class*="package-snippet__description"]' ).text
+
+            if args.versions:
+                if args.debug:
+                    print( '# fetching version info for', pkg, file=sys.stderr )
+                pkgdata = self.get_pypi( pkg )
+                ver     = pkgdata[ 'info' ][ 'version' ]
+                rows.append( [ re.sub( r'\s+', ' ', col.strip())
+                               for col in (pkg, ver, date, desc) ])
+            else:
+                rows.append( [ re.sub( r'\s+', ' ', col.strip())
+                               for col in (pkg, date, desc) ])
+        return { 'rows'    : rows,
+                 'matches' : matches, }
+
+
+
+def mkrowfmt( data, sep='  ', fill={} ):
+    ncols = len( data[0] )
+    if None in fill:
+        fill = fill.copy() # don't modify caller's value
+        for n in range( ncols ):
+            fill[ n ] = fill[ n ] if n in fill else fill[ None ]
+        del fill[ None ]
+
+    width = [ 0 for _ in data[0] ]
+    for row in data:
+        for col in range( ncols ):
+            width[ col ] = max( width[ col ], len( str( row[ col ] )))
+    if (ncols - 1) not in fill: # Don't pad last column if no fill spec
+        width[ ncols - 1 ] = ''
+    fmtv = [ "{{:<{}}}".format( n ) for n in width ]
+
+    for col in fill:
+        pad = fill[ col ]
+
+        if pad.count( '{' ) > 0 and pad.count( '}' ) > 0:
+            fmtv[ col ] = pad.format( width[ col ] )
+        else:
+            try:
+                i = pad.index( '!' )
+                conv = pad[ i : i+2 ]
+                pad = pad.replace( conv, '', 1 )
+                fmtv[ col ] = fmtv[ col ].replace( '{', '{' + conv, 1 )
+            except ValueError:
+                pass
+
+            for c in '>^=<': # search in order of most likely specified
+                if c in pad:
+                    pad = pad.partition( c )
+                    break
+            else:
+                pad = ( '', '<', '' )
+
+            fmtv[ col ] = fmtv[ col ].replace( '<', ''.join( pad[0:2] ), 1 )
+            if pad[2]:
+                fmtv[ col ] = fmtv[ col ][ :-1 ] + pad[2] + '}'
+
+    return (sep.join( fmtv ), width)
+
+
+# Display rpm-style
+def format_info( pkginfo, args ):
+    info     = pkginfo[ 'info' ]
+    releases = pkginfo[ 'releases' ]
+    urls     = pkginfo[ 'urls' ]
+    version  = info[ 'version' ]
+
+    vinfo    = releases[ version ]
+    for elt in vinfo:
+        if elt[ 'python_version' ] == 'source':
+            vinfo = elt
+            break
+    else:
+        vinfo = vinfo[0]
+    # Make date easier to read
+    vinfo['upload_time'] = vinfo['upload_time'].replace( 'T', ' ' )
+
+    # Various editing for improved display
+    if args.verbose:
+        try:
+            req = []
+            for elt in info[ 'requires_dist' ]:
+                if elt.find( '; extra ' ) >= 0:
+                    elt = elt.replace( '"', '' )
+                    elt = elt.replace( '; extra == ', '(' ) + ')'
+                req.append( elt )
+            info[ 'requires_dist' ] = ', '.join( req )
+        except (KeyError, TypeError):
+            pass
+
+        # Handle angle brackets around multiple email addresses correctly.
+        for k in ('author_email', 'maintainer_email'):
+            try:
+                v = info[ k ]
+                if not v:
+                    continue
+                v = v.replace( ', ', ',' )
+                fmt = '<{}>'  # 'mailto:{}'
+                v = ', '.join( fmt.format( addr ) for addr in v.split( ',' ))
+                info[ k ] = v
+            except KeyError:
+                pass
+
+    fields = (( 'Name',         '{name}',                           info, False, ),
+              ( 'Version',      '{version}',                        info, False, ),
+              ( 'Size',         '{size}',                          vinfo, False, ),
+              ( 'Upload Date',  '{upload_time} +0000',             vinfo, False, ),
+              ( 'License',      '{license}',                        info, False, ),
+              ( 'Platform',     '{platform}',                       info, True,  ),
+              ( 'Python',       '{requires_python}',               vinfo, True,  ),
+              ( 'Requires',     '{requires_dist}',                  info, True,  ),
+              ( 'Home URL',     '{home_page}',                      info, False, ),
+              ( 'Doc URL',      '{docs_url}',                       info, False, ),
+              ( 'Bug URL',      '{bugtrack_url}',                   info, False, ),
+              ( 'Project URL',  '{project_url}',                    info, False, ),
+              ( 'Author',       '{author} {author_email}',          info, True,  ),
+              ( 'Maintainer',   '{maintainer} {maintainer_email}',  info, True,  ),
+              ( 'Summary',      '{summary}',                        info, False, ),
+              ( 'Description',  '',                                 info, True,  ))
     rows = []
-    for snippet in snippets:
-        pkg  = snippet.select_one( 'span[class*="package-snippet__name"]'     ).text
-        ver  = snippet.select_one( 'span[class*="package-snippet__version"]'  ).text
-        rel  = snippet.select_one( 'span[class*="package-snippet__created"]' )
-        date = rel.select_one( 'time' ).attrs[ 'datetime' ][ 0:10 ]
-        desc = snippet.select_one( 'p[class*="description"]' ).text
-        rows.append([ re.sub( r'\s+', ' ', col.strip() )
-                     for col in (pkg, ver, date, desc) ])
-    rows.sort( key=lambda row: row[0].lower())
+    for k, v, tbl, verbose_only in fields:
+        if verbose_only and not args.verbose:
+            continue
+        try:
+            vf = v.format( **tbl )
+            if vf.find( 'None' ) >= 0:
+                continue
+            rows.append( (k, vf) )
+        except KeyError:
+            if args.debug:
+                raise
+            else:
+                pass
+    fmtstr  = mkrowfmt( rows, sep=' : ' )[0]
+    fmtrows = [ fmtstr.format( *row ) for row in rows ]
 
-    table = Table( 'PACKAGE', 'VERSION', 'RELEASED', 'DESC',
-                   show_header = False, # Don't show for now
-                   box         = None,
-                   pad_edge    = False )
-    for row in rows:
-        table.add_row( *row )
+    if args.verbose and (desc := info[ 'description' ]):
+        if info.get( 'description_content_type', '' ) == 'text/markdown':
+            # Markdown must be rendered via a Console object
+            cons = PS_Console()
+            if not sys.stdout.isatty():
+                cons.width = 78
+            with cons.capture() as capture:
+                desc_md = PS_Markdown( markup=desc, hyperlinks=False )
+                cons.print( desc_md )
+            desc = capture.get()
+        fmtrows.append( desc )
 
-    console = Console( width=1024, emoji=False )
-    with console.capture() as capture:
-        console.print( table )
-    return re.sub( r'\s+$', '', capture.get(), flags=re.MULTILINE )
+    text = '\n'.join( fmtrows )
+    return re.sub( r'[ \t]+$', '', text, flags=re.MULTILINE )
+
+
+def format_search( data, args ):
+    rows     = data[ 'rows' ]
+    matches  = data[ 'matches' ]
+    returned = len( rows )
+    if args.header:
+        cols = ( [ 'PACKAGE', 'VERSION', 'RELEASED', 'DESCRIPTION' ]
+                 if args.versions else
+                 [ 'PACKAGE', 'UPDATED', 'DESCRIPTION' ] )
+        rows.insert( 0, cols )
+
+    fmtstr = mkrowfmt( rows )[0]
+    lines  = [ fmtstr.format( *row ) for row in rows ]
+
+    if args.verbose:
+        caption = ( '# {} of {} matches'.format( returned, matches )
+                    if int( matches ) > 0 else
+                    '# {} results'.format( returned ))
+        lines.append( caption )
+    return '\n'.join( lines ).strip()
+
+
+
+def json_encode( data, verbose=False, **kwargs ):
+    default = { 'indent'       : 2           if verbose else None,
+                'separators'   : [',', (': ' if verbose else ':') ],
+                'sort_keys'    : verbose,
+                'ensure_ascii' : True, }
+    for k,v in default.items():
+        kwargs.setdefault( k, v )
+    return json.dumps( data, **kwargs )
+
+
+def etree2dict( element ):
+    try:
+        revmap = { v:k for k,v in element.nsmap.items() }
+    except AttributeError:  # nsmap is an lxml extension
+        revmap = {}
+
+    def revns( tag ):
+        if revmap:
+            if (prefix := tag.find( '}' )) > 0:
+                if (ns := tag[ 1:prefix ]) in revmap:
+                    return ':'.join( (revmap[ ns ], tag[ prefix+1: ]))
+        return tag
+
+    def descend( element ):
+        if len( element ) == 0:
+            if element.attrib:
+                return dict( element.attrib )
+            else:
+                return element.text
+        res = {}
+        for child in element:
+            tag   = revns( child.tag )
+            nodes = descend( child )
+            if tag in res:
+                try:
+                    res[ tag ].append( nodes )
+                except AttributeError:
+                    res[ tag ] = [ res[ tag ], nodes ]
+            else:
+                res[ tag ] = nodes
+        return res
+
+    return { element.tag: descend( element ) }
+
+
+def rss2dict( rsstext ):
+    text = rsstext if isinstance( rsstext, bytes ) else rsstext.encode()
+    return etree2dict( ET.fromstring( text ))
+
+
+def rss2json( rsstext, **kwargs ):
+    data = rss2dict( rsstext )
+    return json_encode( data, **kwargs )
+
+
+def rsstidy( rsstext ):
+    elt = ET.fromstring( rsstext.encode() )
+    ET.indent( elt )
+    return ET.tostring( elt ).decode()
+
+
+def get_args():
+    help = {
+        'datesort' : 'show most recently updated modules (newest to oldest) instead of by relevance',
+        'header'   : 'show column headers before results',
+        'info'     : 'show information about a module',
+        'json'     : 'Return raw json results; with --verbose, pretty-print',
+        'numres'   : 'display no more than X mod 20 (default: 40)',
+        'verbose'  : 'show extra information (maybe)',
+        'versions' : 'show current module versions (slow)',
+        'query'    : 'terms to search pypi.org package repository',
+    }
+
+    p = argparse.ArgumentParser()
+    p.add_argument(    '-d', '--date-sort',   action='store_true',  default=False, help=help[ 'datesort' ] )
+    p.add_argument(    '-H', '--header',      action='store_true',  default=False, help=help[ 'header'   ] )
+    p.add_argument(    '-i', '--info',        action='store_true',  default=False, help=help[ 'info'     ] )
+    p.add_argument(    '-j', '--json',        action='store_true',  default=False, help=help[ 'json'     ] )
+    p.add_argument(    '-n', '--num-results',             type=int, default=40,    help=help[ 'numres'   ] )
+    p.add_argument(    '-v', '--verbose',     action='store_true',  default=False, help=help[ 'verbose'  ] )
+    p.add_argument(    '-V', '--versions',    action='store_true',  default=False, help=help[ 'versions' ] )
+    p.add_argument( 'query',                  nargs='+',  type=str,                help=help[ 'query'    ] )
+
+    # Undoc for now
+    p.add_argument(    '-D', '--debug',       action='store_true',  default=False, help=argparse.SUPPRESS )
+    p.add_argument(          '--api',         action='store_true',  default=False, help=argparse.SUPPRESS )
+
+    return p.parse_args()
+
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument( 'query', nargs='+', type=str,
-                     help='terms to search pypi.org package repository' )
-    args = ap.parse_args()
-    text = search( query=' '.join( args.query ))
-    print( text )
+    args      = get_args()
+    pysession = PyPiSession()
+
+    if args.api:
+        fn  = getattr( pysession, args.query[0] )
+        res = fn( *args.query[1:] )
+        if isinstance( res, str ):
+            if res.startswith( '<?xml' ):
+                if args.json:
+                    res = rss2json( res, verbose=args.verbose )
+                elif args.verbose:
+                    res = rsstidy( res )
+        elif isinstance( res, dict ):
+            res  = json_encode( res, verbose=args.verbose )
+        else:
+            res = res.text
+            if res[0] in '{[':
+                data = json.loads( res )
+                res  = json_encode( data, verbose=args.verbose )
+        print( res )
+
+    elif args.info:
+        for pkg in args.query:
+            res = pysession.info( pkg )
+            if res is None or 'message' in res:
+                print( pkg,
+                       res[ 'message' ] if res else 'Not found',
+                       sep  = ': ',
+                       file = sys.stderr )
+                continue
+            elif args.json:
+                print( json_encode( res, args.verbose ))
+            else:
+                print( format_info( res, args ))
+
+    else:
+        res = pysession.search( args.query, args )
+        if args.json:
+            text = json_encode( res, args.verbose )
+        else:
+            text = format_search( res, args )
+        print( text )
+
+######
+##
+######
 
 if __name__ == '__main__':
     sys.exit( main() )
