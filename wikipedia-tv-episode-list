@@ -13,6 +13,8 @@
 # 	List_of_Newhart_episodes
 # 	List_of_The_Bob_Newhart_Show_episodes
 
+# TODO: rewrite this travesty in python
+
 # Code:
 
 setup()
@@ -149,19 +151,20 @@ main()
 {
     setup "$@"
     sections "Season " |
-        { let i=1
+        { let season=1
           while read section rest; do
-              echo '**' Season $i:
+              #echo '**' Season $season:
               getsection $section |
-                  awk 'BEGIN { i=1 }
-			/^\s*\|\s*Title\s*=/ {
-                                sub(/^[^=]+=\s*/, "");
-                                gsub(/[][]/, "");
-                                sub(/.*\|/, "");
-                                printf "\t%02d\t%s\n", i++, $0
-			}'
+                  awk 'BEGIN { episode = 1; }
+                       /^\s*\|\s*Title\s*=/ {
+                           sub(  /^[^=]+=\s*/, "" );
+                           gsub( /[][]/,       "" );
+                           sub(  /.*\|/,       "" );
+                           title = $0;
+                           printf( "S%02dE%02d - %s\n", season, episode++, $0 );
+                       }' season=$season
               echo
-              i=$(($i + 1))
+              season=$(($season + 1))
           done
         }
 }
