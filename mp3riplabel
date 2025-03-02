@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Requires python-eyed3 0.7.5 or later fedora rpm for mp3 files
+# Requires python-eyed3 0.9.7 or later fedora rpm for mp3 files
 # Requires metaflac for flac files
 
 apush()    { eval "$1=(\"\${$1[@]}\" \"\${@:2}\")"; }
@@ -57,7 +57,12 @@ aunshift() { eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"; }
 
 eyed3()
 {
+    case ${DEBUG:+isset} in
+        isset ) set : --log-level debug; shift ;;
+    esac
+
     set eyeD3 "$@"
+
     case $VERBOSE in
         '' ) "$@" ;;
         *  ) (set -x; "$@") ;;
@@ -83,7 +88,7 @@ init_mp3_args()
             TXXX:*    ) apush reset_args --remove-frame   "${tag#*:}:" ;;
             COMMENT:* ) apush reset_args --remove-comment ":${tag#*:}" ;;
             COMMENTS  ) apush reset_args --remove-all-comments ;;
-            APIC      ) apush reset_args --remove-images ;;
+            APIC      ) apush reset_args --remove-all-images ;;
             *         ) apush reset_args --text-frame "$tag:" ;;
         esac
     done
@@ -97,11 +102,13 @@ init_mp3_args()
                       "TRCK:$track${track_total:+/$track_total}"
                       "TPOS:$disc${disc_total:+/$disc_total}"
 
-                      "TORY:$year"            # v2.3
-                      "TRDA:$recording_date"  # v2.3
+                      "TYER:$year"
 
-                      "TDRL:$year"            # v2.4
-                      "TDRC:$recording_date"  # v2.4
+                      "TORY:$orig_recording_date"	# v2.3
+                      "TRDA:$recording_date"		# v2.3
+
+                      "TDRL:$orig_recording_date"	# v2.4
+                      "TDRC:$recording_date"		# v2.4
 
                       "TCON:$genre"
                       "TPE2:$ensemble"
@@ -134,13 +141,13 @@ init_mp3_args()
     done
 
     declare -a tags=(
-        "$front_cover_image:FRONT_COVER:"
-         "$back_cover_image:BACK_COVER:"
-            "$leaflet_image:LEAFLET:"
-              "$media_image:MEDIA:"
-              "$other_image:OTHER:" )
+        "$front_cover_image:FRONT_COVER:Front"
+         "$back_cover_image:BACK_COVER:Back"
+            "$leaflet_image:LEAFLET:Leaflet"
+              "$media_image:MEDIA:Media"
+              "$other_image:OTHER:Other" )
     for field in "${tags[@]}"; do
-        case $field in :*: ) continue ;; esac
+        case $field in :* ) continue ;; esac
         apush args --add-image="$field"
     done
 }
