@@ -1,0 +1,12 @@
+#!/bin/sh
+
+for file in "$@"; do
+    ts=`mediainfo --Inform='General;%Encoded_Date%' "$file" | sed -e 's/T/ /' -e 's/Z UTC/ UTC/'`
+    case $ts in
+        '' ) echo "No timestamp for \"$file\"" 1>&2; continue ;;
+    esac
+
+    touch -d "$ts" "$file" && echo "[ $ts ]  $file"
+done
+
+# eof
