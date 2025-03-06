@@ -240,7 +240,7 @@ class PyPiSession( FastlySession ):
             if matches is None: # get total count of matches
                 fragment = soup.select( 'div>div>p>strong' )
                 if fragment:
-                    matches = fragment[0].text
+                    matches = int( fragment[0].text.replace( ',', '' ))
             snippets += soup.select( 'a[class*="package-snippet"]' )
 
         rows = []
@@ -250,16 +250,17 @@ class PyPiSession( FastlySession ):
             date = rel.select_one( 'time' ).attrs[ 'datetime' ][ 0:10 ]
             desc = snippet.select_one( 'p[class*="package-snippet__description"]' ).text
 
+            row = { 'name' : pkg,
+                    'date' : date,
+                    'desc' : re.sub( r'\s+', ' ', desc.strip() ), }
+            rows.append( row )
+
             if args.versions:
                 if args.debug:
                     print( '# fetching version info for', pkg, file=sys.stderr )
                 pkgdata = self.get_pypi( pkg )
-                ver     = pkgdata[ 'info' ][ 'version' ]
-                rows.append( [ re.sub( r'\s+', ' ', col.strip())
-                               for col in (pkg, ver, date, desc) ])
-            else:
-                rows.append( [ re.sub( r'\s+', ' ', col.strip())
-                               for col in (pkg, date, desc) ])
+                row[ 'vers' ] = pkgdata[ 'info' ][ 'version' ]
+
         return { 'rows'    : rows,
                  'matches' : matches, }
 
@@ -405,14 +406,20 @@ def format_search( data, args ):
     rows     = data[ 'rows' ]
     matches  = data[ 'matches' ]
     returned = len( rows )
+
+    fields = ( ( 'name', 'vers', 'date', 'desc' )
+               if args.versions else
+               ( 'name', 'date', 'desc' ) )
+    lrows  = [ tuple( row[ field ] for field in fields ) for row in rows ]
+
     if args.header:
         cols = ( [ 'PACKAGE', 'VERSION', 'RELEASED', 'DESCRIPTION' ]
                  if args.versions else
                  [ 'PACKAGE', 'UPDATED', 'DESCRIPTION' ] )
-        rows.insert( 0, cols )
+        lrows.insert( 0, cols )
 
-    fmtstr = mkrowfmt( rows )[0]
-    lines  = [ fmtstr.format( *row ) for row in rows ]
+    fmtstr = mkrowfmt( lrows )[0]
+    lines  = [ fmtstr.format( *row ) for row in lrows ]
 
     if args.verbose:
         caption = ( '# {} of {} matches'.format( returned, matches )
@@ -551,7 +558,11 @@ def main():
 
     else:
         res = pysession.search( args.query, args )
-        if args.json:
+        if not (res and res.get( 'rows', None )):
+            text = '{}: No match'.format( ' '.join( args.query ))
+            print( text, file=sys.stderr )
+            return 1
+        elif args.json:
             text = json_encode( res, args.verbose )
         else:
             text = format_search( res, args )
