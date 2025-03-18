@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-# Requires python-eyed3 0.9.7 or later fedora rpm for mp3 files
+# Requires python3-eyed3 0.9.7 or later fedora rpm for mp3 files
 # Requires metaflac for flac files
-
-apush()    { eval "$1=(\"\${$1[@]}\" \"\${@:2}\")"; }
-aunshift() { eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"; }
 
 ######
 ## mp3
@@ -57,11 +54,16 @@ aunshift() { eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"; }
 
 eyed3()
 {
-    case ${DEBUG:+isset} in
-        isset ) set : --log-level debug; shift ;;
+    declare -a dbg_args=()
+    case $DEBUG in
+        ''    ) : ;;
+        1|t|y ) dbg_args+=( --log-level debug ) ;;
+        *     ) for logger in $DEBUG; do
+                    dbg_args+=( --log-level debug:$logger )
+                done ;;
     esac
 
-    set eyeD3 "$@"
+    set eyeD3 "${dbg_args[@]}" "$@"
 
     case $VERBOSE in
         '' ) "$@" ;;
@@ -85,11 +87,11 @@ init_mp3_args()
     reset_args=()
     for tag in "${reset_tags[@]}" ; do
         case $tag in
-            TXXX:*    ) apush reset_args --remove-frame   "${tag#*:}:" ;;
-            COMMENT:* ) apush reset_args --remove-comment ":${tag#*:}" ;;
-            COMMENTS  ) apush reset_args --remove-all-comments ;;
-            APIC      ) apush reset_args --remove-all-images ;;
-            *         ) apush reset_args --text-frame "$tag:" ;;
+            TXXX:*    ) reset_args+=( --remove-frame    "${tag#*:}:" ) ;;
+            COMMENT:* ) reset_args+=( --remove-comment ":${tag#*:}"  ) ;;
+            COMMENTS  ) reset_args+=( --remove-all-comments          ) ;;
+            APIC      ) reset_args+=( --remove-all-images            ) ;;
+            *         ) reset_args+=( --text-frame "$tag:"           ) ;;
         esac
     done
 
@@ -116,6 +118,7 @@ init_mp3_args()
                       "TPE4:$arranger"
              "TXXX:NARRATOR:$narrator"
              "TXXX:LOCATION:$location"
+              "TXXX:SUMMARY:$summary"
 
                       "TPUB:$publisher"
                 "TXXX:LABEL:$record_label"
@@ -134,21 +137,31 @@ init_mp3_args()
         case $tag in
             TXXX )
                 case $desc in '' ) continue ;; esac
-                apush args --user-text-frame "$data" ;;
-            COMMENT ) apush args --add-comment "$data" ;;
-            * ) apush args --text-frame "$tag:$data" ;;
+                args+=( --user-text-frame "$data" ) ;;
+            COMMENT )
+                args+=( --add-comment     "$data" ) ;;
+            * )
+                args+=( --text-frame "$tag:$data" ) ;;
         esac
     done
 
+    # Add redundant descriptions for each image type because eyed3 0.9.7
+    # considers descriptions global to all image types, so if the descriptions
+    # are all blank, only the last image will be added to the file.
+    # This seems like a bug; to fix, change eyed3.id3.tag.ImagesAccessor.set
+    # to read
+    #            if img.picture_type == type_ and img.description == description:
+    # instead of
+    #            if img.description == description:
     declare -a tags=(
-        "$front_cover_image:FRONT_COVER:Front"
-         "$back_cover_image:BACK_COVER:Back"
+        "$front_cover_image:FRONT_COVER:Front Cover"
+         "$back_cover_image:BACK_COVER:Back Cover"
             "$leaflet_image:LEAFLET:Leaflet"
               "$media_image:MEDIA:Media"
               "$other_image:OTHER:Other" )
     for field in "${tags[@]}"; do
         case $field in :* ) continue ;; esac
-        apush args --add-image="$field"
+        args+=( --add-image "$field" )
     done
 }
 
@@ -160,19 +173,25 @@ label_mp3()
 
     init_mp3_args
 
+    # nb eyed3 0.9.7 has a --preserve-file-times
+    # flag but older versions don't.
     file=`file_template "$track"`
     touch -r "$file" .stamp
 
     echo ----------------------------------------
     echo "$file"
 
+    case ${DEBUG:+isset}${VERBOSE:+isset} in
+        *isset* ) exec 3>&1         ;;
+        *       ) exec 3> /dev/null ;;
+    esac
     {
         if [[ ${#reset_args[@]} -gt 0 ]]; then
             eyed3 "${reset_args[@]}" "$file"
         fi
 
         eyed3 "${args[@]}" "$@" "$file"
-    } > /dev/null
+    } 1>&3
 
     touch -r .stamp "$file"
     rm -f .stamp
@@ -244,7 +263,7 @@ init_vorbis_args()
 
                       "${extra_tags[@]}" )
     for tag in "${reset_tags[@]}" ; do
-        apush args --remove-tag "$tag"
+        args+=( --remove-tag "$tag" )
     done
 
     declare -A seen=()
@@ -254,10 +273,10 @@ init_vorbis_args()
 
         case ${seen[$tag]+isset} in
             '' ) seen[$tag]=t
-                 apush args --remove-tag "$tag" ;;
+                 args+=( --remove-tag "$tag" ) ;;
         esac
         case ${data:+nonempty} in
-            nonempty ) apush args $set_tag "$elt" ;;
+            nonempty ) args+=( $set_tag "$elt" ) ;;
         esac
     done
 }
@@ -292,7 +311,7 @@ label_flac()
                       "0||||$other_image" )
     for field in "${tags[@]}"; do
         case $field in
-            ?"||||"?* ) apush args --import-picture-from "$field" ;;
+            ?"||||"?* ) args+=( --import-picture-from "$field" ) ;;
         esac
     done
 
@@ -458,6 +477,7 @@ config()
             conductor=
              ensemble=
              location=
+              summary=
        recording_date=
          record_label=
       record_label_id=
