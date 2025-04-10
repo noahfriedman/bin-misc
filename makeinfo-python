@@ -1,9 +1,11 @@
 #!/bin/sh
 # $Id$
 
-# Requires python3-sphinx
-if ! type sphinx-build-3 > /dev/null 2>&1; then
-    echo "Need python3-sphinx installed." 1>&2
+: ${SPHINXBUILD:=sphinx-build-3}
+
+# Requires python3-sphinx (sphinx-build-3), or pip install Sphinx (sphinx-build)
+if ! type $SPHINXBUILD > /dev/null 2>&1; then
+    echo "Need python3-sphinx installed or pip install Sphinx." 1>&2
     exit 1
 fi
 
@@ -33,11 +35,13 @@ set -e -x
 mkdir -p $tmpdir
 
 cd $tmpdir
-wget $url
+# These flags keep from saving file to cpython-...tgz
+# This way we get the exact file name we requested on disk
+wget --no-trust-server-names --no-content-disposition $url
 tar xf $tgz
 
 cd cpython-$ver/Doc
-sphinx-build-3 -b texinfo -d build/doctrees . build/texinfo
+$SPHINXBUILD -b texinfo -d build/doctrees . build/texinfo
 
 cd build/texinfo && mmakeinfo python.texi
 
