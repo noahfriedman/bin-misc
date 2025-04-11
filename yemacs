@@ -60,8 +60,8 @@ main()
     case $1 in
         -attach )
             case $DISPLAY in
-                '' ) client "(make-frame-on-tty \"$(tty)\" \"$TERM\")" ;;
-                *  ) client "(make-frame-on-display \"$DISPLAY\")"    ;;
+                '' ) client "(make-terminal-frame '((tty . \"$(tty)\") (tty-type . \"$TERM\")))" ;;
+                *  ) client "(make-frame-on-display \"$DISPLAY\")" ;;
             esac > /dev/null ;;
 
         -workspaces )
