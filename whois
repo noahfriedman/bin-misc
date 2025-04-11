@@ -80,7 +80,7 @@ my @re =
    qr=^.*?: Select Request Email Form.*?\n=m,
 
    # whois.corporatedomains.com
-   qr=Corporation Service Company.*?cscglobal.com\n=s,
+   qr=Corporation Service Company.*?(?:cscglobal.com|DNS Hosting\.)\n=s,
 
    # grs-whois.aliyun.com
    qr=Important Reminder: .*?hichina.com\n=s,
