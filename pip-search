@@ -240,7 +240,7 @@ class PyPiSession( FastlySession ):
             if matches is None: # get total count of matches
                 fragment = soup.select( 'div>div>p>strong' )
                 if fragment:
-                    matches = int( fragment[0].text.replace( ',', '' ))
+                    matches = fragment[0].text
             snippets += soup.select( 'a[class*="package-snippet"]' )
 
         rows = []
@@ -423,13 +423,18 @@ def format_search( data, args ):
 
     if args.verbose:
         caption = ( '# {} of {} matches'.format( returned, matches )
-                    if int( matches ) > 0 else
+                    if atoi( matches ) > 0 else
                     '# {} results'.format( returned ))
         lines.append( caption )
     return '\n'.join( lines ).strip()
 
 
 
+def atoi( text ):
+    filt = { ord( c ): None for c in ',+' }
+    return int( text.translate( filt ))
+
+
 def json_encode( data, verbose=False, **kwargs ):
     default = { 'indent'       : 2           if verbose else None,
                 'separators'   : [',', (': ' if verbose else ':') ],
