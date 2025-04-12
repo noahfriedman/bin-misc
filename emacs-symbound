@@ -4,8 +4,6 @@
 # Created: 2017-06-29
 # Public domain
 
-# $Id: emacs-symbound,v 1.4 2017/06/30 03:01:46 friedman Exp $
-
 # Commentary:
 
 # I have a bunch of emacs versions installed so I can test for portability.
@@ -63,11 +61,17 @@ main()
     declare -A emacs_args=( [21]='-q' [20]='-q' [19]='-q'
                             [18]='-q -l /dev/stdin -f eval-current-buffer')
 
+    # This template is run through printf so double any % chars that need
+    # to be read by lisp.
     template="
       (let ((outfn '%s)
             (symlist (nreverse '(%s)))
+            (ver (condition-case nil
+                         (format \"%%s.%%s\"
+                                 emacs-major-version
+                                 emacs-minor-version)
+                       (error emacs-version)))
             (result nil))
-        (defvar pp-default-function 'pp-28) ; emacs 30
         (condition-case nil
             (mapcar 'require '($FEATURES))
           (error nil))
@@ -76,8 +80,11 @@ main()
                 (cells nil))
             (setq symlist (cdr symlist))
 
-            (if (symbol-plist sym)
-                (setq cells (cons 'plist cells)))
+            (cond ((or (get sym 'byte-obsolete-variable)
+                       (get sym 'byte-obsolete-info))
+                   (setq cells (cons 'obsolete cells)))
+                  ((symbol-plist sym)
+                   (setq cells (cons 'plist cells))))
 
             (if (fboundp sym)
                 (let* ((symval (symbol-function sym))
@@ -92,7 +99,12 @@ main()
                 (setq cells (cons 'variable cells)))
 
             (setq result (cons (cons sym (or cells (list nil))) result))))
-        (funcall outfn (cons emacs-version result)))"
+        (cond ((string-lessp \"18\" emacs-version))
+              ((not (featurep 'x-toolkit))
+               (setq ver (concat ver \"-nox\")))
+              ((boundp 'gtk-version-string)
+               (setq ver (concat ver \"-gtk\"))))
+        (funcall outfn (cons ver result)))"
 
     case $# in
         1 ) outfn=prin1 ;;
@@ -111,7 +123,7 @@ main()
             xemacs* ) : ;;  # already adds newline
             * ) echo ;;
         esac
-    done
+    done | fmtcols
     echo
 }
 
