@@ -22,7 +22,7 @@ my @re =
    qr=Domains - cheap, easy, and secure at .*?\n=s,
 
    # Ignore fields which have no useful info
-   qr=^.*?: REDACTED FOR PRIVACY\n=m,
+   qr=^.*?: REDACTED(?: FOR PRIVACY)?\n=m,
    qr=^.*?: Registration Private\n=m,
    qr=^.*?: Not Available From Registry\n=m,
    qr=^.*?: GDPR Masked\n=m,
