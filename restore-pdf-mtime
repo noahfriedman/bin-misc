@@ -10,6 +10,9 @@ readmtime()
 
 for pdf in "$@"; do
     tm=`pdfinfo "$pdf" | readmtime`
-    case $tm in "" ) continue ;; esac
-    touch -d "$tm" "$pdf"
+    case $tm in
+        '' ) tm="[no change                   ]" ;;
+        *  ) touch -d "$tm" "$pdf"             ;;
+    esac
+    echo "[$tm]		$pdf"
 done
