@@ -1,35 +1,38 @@
 #!/bin/sh
 # create hash links on all files in the specified directory
-#
 
-if [ -z "$1" -o ! -d "$1" ] ; then
-    echo "'$1' must be a directory." >&2
-    exit 1
+_print=
+_v=
+
+case $1 in
+    -v ) _print=-print _v=-v
+         shift ;;
+esac
+
+case $# in
+    0 ) set /etc/pki/tls/certs ;;
+esac
+
+cd "$1" || exit $?
+
+
+if type update-ca-trust > /dev/null 2>&1 ; then
+    test -n "$_print" && echo "* running update-ca-trust"
+    update-ca-trust
+else
+    test -n "$_print" && echo "* Removing existing hash symlinks"
+    find * -name '????????.[0-9]*' -type l $_print -delete
 fi
 
-if ! cd $1 ; then
-    echo "Cannot change cwd to $1" >&2
-    exit 2
-fi
-
-# remove old links
-for i in ????????.* ; do
-	if  [ -h $i ] ; then
-		rm -f $i
-	fi
-done
-
-# create new links
-for i in * ; do
-	if [ -r $i -a ! -d $i ] ; then
-    		hash=$(openssl x509 -hash -noout -in $i 2>/dev/null)
-    		if [ -z "$hash" ] ; then
-    		    continue
-    		fi
-    		suffix=0
-    		while [ -e $hash.$suffix ] ; do
-    		    suffix=$((suffix + 1))
-    		done
-    		ln -sf $i $hash.$suffix
-	fi
+test -n "$_print" && echo "* Installing local hash symlinks"
+for file in * ; do
+    if [ -f "$file" ] && ! [ -L "$file" ]; then
+        hash=$(openssl x509 -hash -noout -in "$file" 2>/dev/null)
+        test -z "$hash" && continue
+        suffix=0
+        while [ -e "$hash.$suffix" ] ; do
+    	    suffix=$(($suffix + 1))
+        done
+        ln $_v -sf "$file" "$hash.$suffix"
+    fi
 done
